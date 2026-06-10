@@ -7,22 +7,23 @@ This is a collection of pipelines to be used for NGS analyses using the pangenom
 
 Start by creating a clone of the repository:
 
-<pre><code>mkdir /workspace/lab/houlahanlab/<user>/git
-cd /workspace/lab/houlahanlab/<user>/git
+<pre><code>mkdir /workspace/lab/houlahanlab/your_macid/git
+cd /workspace/lab/houlahanlab/your_macid/git
 git clone git@github.com:houlahanlab/pangenome-pipeline.git
 </code></pre>
 
 ## Dependencies
 The pangenome-pipeline was developed using python and is currently compatible using the Slurm workload manager.
-- python packages os, subprocess, yaml, argparse, datetime, simple_slurm
-
+Required tools/packages (these should all be available in the shared lab environment):
+- python3
+- python packages: os, subprocess, yaml, argparse, datetime, simple_slurm
 
 ## Example
 To set up your config files, see includes examples:
 - example_data.yaml: this lists the paths to your fastq files while providing the donor/sample/library/lane information
 - example_tool.yaml: this lists the paths to your desired reference genome and provides the compute resource requirements for each slurm job
 
-<pre><code>cd /workspace/lab/houlahanlab/<user>/git/pangenome-pipeline
+<pre><code>cd /workspace/lab/houlahanlab/your_macid/git/pangenome-pipeline
 
 # test run the pipeline; this will generate the output directory structure and scripts that will be submitted to slurm
 # check that all of these seem reasonable before submitting the next command
