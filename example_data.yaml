@@ -1,0 +1,30 @@
+---
+TCGA-FD-A3B5:
+    TCGA-FD-A3B5-01A:
+        type: tumour
+        libraries:
+            TCGA-FD-A3B5-01A-11D-A20D-08:
+                runlanes:
+                    L001:
+                        fastq:
+                            R1: /workspace/lab/houlahanlab/projects/tcga-pangenome-snv/data/tcga/fastqs/TCGA-FD-A3B5-01A-11D-A20D-08_R1.fastq.gz
+                            R2: /workspace/lab/houlahanlab/projects/tcga-pangenome-snv/data/tcga/fastqs/TCGA-FD-A3B5-01A-11D-A20D-08_R2.fastq.gz
+    TCGA-FD-A3B5-10A:
+        type: normal
+        libraries:
+            TCGA-FD-A3B5-10A-01D-A20D-08:
+                runlanes:
+                    L001:
+                        fastq:
+                            R1: /workspace/lab/houlahanlab/projects/tcga-pangenome-snv/data/tcga/fastqs/TCGA-FD-A3B5-10A-01D-A20D-08_R1.fastq.gz
+                            R2: /workspace/lab/houlahanlab/projects/tcga-pangenome-snv/data/tcga/fastqs/TCGA-FD-A3B5-10A-01D-A20D-08_R2.fastq.gz
+TCGA-FD-A3N5:
+    TCGA-FD-A3N5-01A:
+        type: tumour
+        libraries:
+            TCGA-FD-A3N5-01A-11D-A21A-08:
+                runlanes:
+                    L001:
+                        fastq:
+                            R1: /workspace/lab/houlahanlab/projects/tcga-pangenome-snv/data/tcga/fastqs/TCGA-FD-A3N5-01A-11D-A21A-08_R1.fastq.gz
+                            R2: /workspace/lab/houlahanlab/projects/tcga-pangenome-snv/data/tcga/fastqs/TCGA-FD-A3N5-01A-11D-A21A-08_R2.fastq.gz

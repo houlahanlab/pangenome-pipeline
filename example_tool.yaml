@@ -1,0 +1,21 @@
+---
+project_name: GRCh38_linear
+output_directory: /workspace/lab/houlahanlab/projects/tcga-pangenome-snv/data/alignments/GRCh38_linear
+# reference files
+reference: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Reference-Fasta-Files/GRCh38.d1.vd1.fa
+ref_gbz: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch38_no_alts/GRCh38.d1.vd1_vg.gbz
+ref_dist: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch38_no_alts/GRCh38.d1.vd1_vg.dist
+ref_min: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch38_no_alts/GRCh38.d1.vd1_vg.min
+ref_paths: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch38_alts/GRCh38_primary_contigs.txt
+known_indels: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Known-Indel-Files/Homo_sapiens_assembly38.known_indels.vcf
+# tool versions
+vg_path: 'apptainer exec /workspace/lab/houlahanlab/software/VG/vg_v1.61.0.sif vg'
+# parameters
+giraffe:
+  time: '8:0:0'
+  mem: '48G'
+  cpus: 2
+gatk:
+  time: '8:0:0'
+  mem: '8G'
+  cpus: 2
