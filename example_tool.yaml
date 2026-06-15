@@ -7,9 +7,11 @@ ref_gbz: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch
 ref_dist: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch38_no_alts/GRCh38.d1.vd1_vg.dist
 ref_min: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch38_no_alts/GRCh38.d1.vd1_vg.min
 ref_paths: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch38_alts/GRCh38_primary_contigs.txt
+ref_pattern: # the stem added to contig names in the graph (ie, "GRCh38#0#")
 known_indels: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Known-Indel-Files/Homo_sapiens_assembly38.known_indels.vcf
 # tool versions
-vg_path: 'apptainer exec /workspace/lab/houlahanlab/software/VG/vg_v1.61.0.sif vg'
+vg_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/vg_v1.61.0.sif'
+strelka_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/strelka_2.9.10--h9ee0642_1.sif'
 # parameters
 giraffe:
   time: '8:0:0'
@@ -19,3 +21,8 @@ gatk:
   time: '8:0:0'
   mem: '8G'
   cpus: 2
+strelka:
+  ref: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Reference-Fasta-Files/GRCh38.d1.vd1_primary_only.fa
+  time: '4:0:0'
+  mem: '12G'
+  cpus: 1
