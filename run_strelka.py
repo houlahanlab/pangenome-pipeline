@@ -40,17 +40,18 @@ def run_strelka(strelka_executable, reference, targets, tumour, normal, rundir):
         "--runDir", rundir
     ]
 
-    tool_command2 = f"{strelka_executable} {rundir}/runWorkflow.py -m local"
+    tool_command2 = f"{strelka_executable} {rundir}/runWorkflow.py -m local -j 8"
 
     final_command = tool_comment + "\n" + " ".join(map(str, tool_command1)) + "\n\n" + tool_command2
     return final_command
 
 
-def run_filter_vcf(vcf, filtered_vcf):
+def run_filter_vcf(conda_path, vcf, filtered_vcf):
     """Filter raw Strelka variant calls."""
 
     tool_comment = "# filter variants to only PASS"
     tool_command = [
+        f'eval "$({conda_path} shell.bash hook)"',
         f"conda activate samtools_env",
         f"bcftools view -f PASS {vcf} > {filtered_vcf}",
         f"bgzip {filtered_vcf}",
@@ -172,6 +173,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             # collect metrics for final bam
             if is_file_missing_or_empty(filtered_vcf):
                 filter_command = run_filter_vcf(
+                    conda_path = tool_data['conda_path'],
                     vcf = strelka_vcf, 
                     filtered_vcf = filtered_vcf
                 )
