@@ -38,7 +38,7 @@ def run_giraffe(vg, reference, dist_file, min_file, output_gam, fastq_files):
 
     vg_comment = "# run alignment using vg giraffe"
     vg_command = [
-        vg, "giraffe",
+        vg, "vg giraffe",
         "-p -t 16 -D 150",
         "-Z", reference,
         "-d", dist_file,
@@ -57,7 +57,7 @@ def run_vg_stats(vg, gam, stats):
 
     vg_comment = "# collect alignment statistics from graph"
     vg_command = [
-        vg, "stats",
+        vg, "vg stats",
         "-a", gam,
         ">", stats
     ]
@@ -66,15 +66,20 @@ def run_vg_stats(vg, gam, stats):
     return final_command
 
 
-def run_surject(vg, reference, gam, paths, bam):
+def run_surject(vg, reference, gam, paths, bam, pattern=None):
     """Surject graph-based alignments to linear alignments (gam to bam)."""
+
+    reheader = '';
+    if pattern:
+        reheader = f'| samtools reheader -c "sed s/{pattern}//g" -'
 
     vg_comment = "# convert gam to bam"
     vg_command = [
-        vg, "surject",
+        vg, "vg surject",
         "-x", reference,
         "-i -b", gam,
         "-F", paths,
+        reheader,
         ">", bam
     ]
 
@@ -236,7 +241,7 @@ def main(tool_config:str, data_config:str, out_dir:str, out_bams_filename:str, r
         cleanup_files = []
 
         n_samples = len(sample_data[donor].keys())
-        print(f"\nProcessing {n_samples} for donor: {donor}", file = log)
+        print(f"\nProcessing {n_samples} samples for donor: {donor}", file = log)
 
         for sample in (sample_data[donor].keys()):
  
@@ -316,7 +321,8 @@ def main(tool_config:str, data_config:str, out_dir:str, out_bams_filename:str, r
                     gbz_file,
                     output_gam,
                     tool_data['ref_paths'],
-                    surject_bam
+                    surject_bam,
+                    tool_data['ref_pattern']
                     )
 
             align_commands = list(filter(None, [giraffe_command, stats_command, surject_command]))
@@ -454,7 +460,7 @@ def main(tool_config:str, data_config:str, out_dir:str, out_bams_filename:str, r
             cleanup_command = f"if [[ -s " + " && -s ".join(final_bams) + " ]]; then\n"
             cleanup_command += f"  rm -rf {tmp_directory}"
             cleanup_command += "\n  rm " + "\n  rm ".join(cleanup_files)
-            cleanup_command += "else"
+            cleanup_command += "\nelse"
             cleanup_command += "\n  echo 'Final output bam is missing; not removing intermediate files!'"
             cleanup_command += "\n  exit 1"
             cleanup_command += "\nfi"
