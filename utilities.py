@@ -73,7 +73,7 @@ def write_script(args, job_name, command, job_parameters=[], depends=None, array
                 slurm.set_dependency(f"afterany:{str_depends}")
             else:
                 slurm.set_dependency(f"afterok:{str_depends}")
-            slurm.add_arguments(kill_on_invalid_dep="yes")
+                slurm.add_arguments(kill_on_invalid_dep="yes")
 
     if array is not None:
         slurm.set_array(array)
