@@ -17,6 +17,8 @@ The pangenome-pipeline was developed using python and is currently compatible us
 Required tools/packages (these should all be available in the shared lab environment):
 - python3
 - python packages: os, subprocess, yaml, argparse, datetime, simple_slurm
+- apptainer images for VG, Strelka
+- conda environment for samtools (including bcftools, bgzip, tabix)
 
 ## Example
 To set up your config files, see includes examples:
@@ -25,12 +27,21 @@ To set up your config files, see includes examples:
 
 <pre><code>cd /workspace/lab/houlahanlab/your_macid/git/pangenome-pipeline
 
-# test run the pipeline; this will generate the output directory structure and scripts that will be submitted to slurm
+# test run the alignment pipeline; this will generate the output directory structure and scripts that will be submitted to slurm
 # check that all of these seem reasonable before submitting the next command
 python run_alignments.py -t /path/to/your/tool_config.yaml -d /path/to/your/data_config.yaml -o /path/to/some/output/directory -b /path/to/some/output/directory/output_bam_files.yaml --remove --dry_run
 
 # now, submit the jobs to slurm!
 python run_alignments.py -t /path/to/your/tool_config.yaml -d /path/to/your/data_config.yaml -o /path/to/some/output/direct
 ory -b /path/to/some/output/directory/output_bam_files.yaml --remove
+</code></pre>
+
+<pre><code>
+# test run the strelka variant-calling pipeline; this will generate the output directory structure and scripts that will be submitted to slurm
+# check that all of these seem reasonable before submitting the next command
+python run_strelka.py -t /path/to/your/tool_config.yaml -d /path/to/your/bam_files.yaml -o /path/to/some/output/directory --remove --dry_run
+
+# now, submit the jobs to slurm!
+python run_strelka.py -t /path/to/your/tool_config.yaml -d /path/to/your/bam_files.yaml -o /path/to/some/output/directory --remove
 </code></pre>
 
