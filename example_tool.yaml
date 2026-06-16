@@ -9,6 +9,7 @@ ref_min: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch
 ref_paths: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch38_alts/GRCh38_primary_contigs.txt
 ref_pattern: # the stem added to contig names in the graph (ie, "GRCh38#0#")
 known_indels: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Known-Indel-Files/Homo_sapiens_assembly38.known_indels.vcf
+target_regions: /workspace/lab/houlahanlab/resources/agilent_sureselect_exon/Agilent_SureSelect_All_Exon_V5.bed.gz
 # tool versions
 vg_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/vg_v1.61.0.sif'
 conda_path: /workspace/lab/houlahanlab/software/micromamba/bin/conda
