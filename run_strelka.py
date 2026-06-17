@@ -2,7 +2,6 @@
 GATK-recalibrated BAM files."""
 
 import os
-import subprocess
 import yaml
 import argparse
 #import pysam
@@ -102,8 +101,8 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
 
     # add details to log file
     print(f"\nLinear reference file used is {reference}", file = log)
-    #print(f"\nUsing vg version: {vg_executable}", file = log)
-    #print("Using gatk version: 4.3.0.0 [with Picard version 2.27.5]", file = log)
+    print(f"\nUsing Strelka version: {strelka_executable}", file = log)
+    print("Using samtools/bcftools version: 1.23.1", file = log)
     print(f"\n----------\nProcessing {n_patients} patients...", file = log)
 
     # initiate object to hold job_ids
@@ -168,7 +167,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
                     rundir = smp_directory
                     )
 
-            cleanup_files = os.path.join(smp_directory, 'workspace')
+            cleanup_files.append(os.path.join(smp_directory, 'workspace'))
 
             # collect metrics for final bam
             if is_file_missing_or_empty(filtered_vcf):
@@ -201,13 +200,13 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             else:
                 print(f"      >> Strelka step already completed; no jobs to submit.", file = log)
 
-            final_files.append(filtered_vcf)
+            final_files.append(f"{filtered_vcf}.gz")
 
         # do cleanup once per donor
         if remove:
             cleanup_command = f"if [[ -s " + " && -s ".join(final_files) + " ]]; then\n"
             cleanup_command += "\n  rm -rf " + "\n  rm -rf ".join(cleanup_files)
-            cleanup_command += "else"
+            cleanup_command += "\nelse"
             cleanup_command += "\n  echo 'Final output VCF(s) is missing; not removing intermediate files!'"
             cleanup_command += "\n  exit 1"
             cleanup_command += "\nfi"
@@ -259,7 +258,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
 if __name__ == "__main__":
 
     # get command line arguments
-    parser = argparse.ArgumentParser(description = "Align fastq files")
+    parser = argparse.ArgumentParser(description = "Run Strelka on T/N BAMs")
     parser.add_argument("-t", "--tool_config", help = "tool config (reference files and tool versions)")
     parser.add_argument("-d", "--data_config", help = "data config (bams listed in yaml format)")
     parser.add_argument("-o", "--out_dir", help = "path to output directory")
