@@ -9,11 +9,15 @@ ref_min: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch
 ref_paths: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch38_alts/GRCh38_primary_contigs.txt
 ref_pattern: # the stem added to contig names in the graph (ie, "GRCh38#0#")
 known_indels: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Known-Indel-Files/Homo_sapiens_assembly38.known_indels.vcf
+pon: /workspace/lab/houlahanlab/resources/germline_resource/1000g_pon.hg38.vcf.gz
+germline_resource: /workspace/lab/houlahanlab/resources/germline_resource/af-only-gnomad.hg38.vcf.gz
 target_regions: /workspace/lab/houlahanlab/resources/agilent_sureselect_exon/Agilent_SureSelect_All_Exon_V5.bed.gz
 # tool versions
 vg_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/vg_v1.61.0.sif'
 conda_path: /workspace/lab/houlahanlab/software/micromamba/bin/conda
 strelka_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/strelka_2.9.10--h9ee0642_1.sif'
+somaticsniper_path: '/workspace/lab/houlahanlab/software/somatic-sniper'
+readcount_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/bam-readcount_1.0.1.sif'
 # parameters
 giraffe:
   time: '8:0:0'
@@ -27,4 +31,14 @@ strelka:
   ref: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Reference-Fasta-Files/GRCh38.d1.vd1_primary_only.fa
   time: '4:0:0'
   mem: '12G'
+  cpus: 1
+somaticsniper:
+  ref: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Reference-Fasta-Files/GRCh38.d1.vd1_primary_only.fa
+  time: '4:0:0'
+  mem: '8G'
+  cpus: 1
+mutect2:
+  ref: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Reference-Fasta-Files/GRCh38.d1.vd1_primary_only.fa
+  time: '4:0:0'
+  mem: '8G'
   cpus: 1
