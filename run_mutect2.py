@@ -63,21 +63,23 @@ def run_mutect2(reference, tumour, vcf, normal, normal_id, tmp_dir, java_mem, n_
 def run_filter_vcf(conda_path, reference, vcf, filtered_vcf, java_mem, tmp_dir):
     """Filter raw Mutect2 variant calls."""
 
+    tmp_vcf = vcf.replace('raw','variants')
+
     java = f"--java-options '{java_mem} -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1 -Djava.io.tmpdir={tmp_dir}'"
 
-    tool_comment1 = "# filter mutect2 variants"
+    tool_comment1 = "# annotate mutect2 variants with filters"
     tool_command1 = [
         "gatk", java, "FilterMutectCalls",
         "-R", reference,
         "-V", vcf,
-        "-O", filtered_vcf
+        "-O", tmp_vcf
     ]
 
     tool_comment2 = "# filter variants to only PASS"
     tool_command2 = [
         f'eval "$({conda_path} shell.bash hook)"',
         f"conda activate samtools_env",
-        f"bcftools view -f PASS {vcf} > {filtered_vcf}",
+        f"bcftools view -f PASS {tmp_vcf} > {filtered_vcf}",
         f"bgzip {filtered_vcf}",
         f"tabix -p vcf {filtered_vcf}.gz",
         "conda deactivate"
@@ -172,8 +174,8 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             os.makedirs(smp_directory, exist_ok=True)
 
             # indicate output files
-            mutect2_vcf = os.path.join(smp_directory, f"{sample}_Mutect2_variants.vcf.gz")
-            filtered_vcf = os.path.join(smp_directory, f"{sample}_Mutect2_variants_filtered.vcf.gz")
+            mutect2_vcf = os.path.join(smp_directory, f"{sample}_Mutect2_raw.vcf.gz")
+            filtered_vcf = os.path.join(smp_directory, f"{sample}_Mutect2_pass_variants.vcf")
 
             job_id = []
 
@@ -196,7 +198,8 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
                     pon = tool_data['pon']
                 )
 
-            #cleanup_files.append(os.path.join(smp_directory, 'workspace'))
+            cleanup_files.append(mutect2_vcf)
+            cleanup_files.append(f"{mutect2_vcf}.tbi")
 
             # collect metrics for final bam
             if is_file_missing_or_empty(filtered_vcf):
@@ -214,7 +217,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             # write slurm script and sbatch (unless dry-run)
             print(f"    Submitting job for Mutect2...", file = log)
 
-            if len(call_commands) > 0 and is_file_missing_or_empty(filtered_vcf):   
+            if len(call_commands) > 0 and is_file_missing_or_empty(f"{filtered_vcf}.gz"):
 
                 job_id, script = write_script(
                     args,
@@ -232,12 +235,12 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             else:
                 print(f"      >> Mutect2 step already completed; no jobs to submit.", file = log)
 
-            final_files.append(filtered_vcf)
+            final_files.append(f"{filtered_vcf}.gz")
 
         # do cleanup once per donor
         if remove:
-            cleanup_command = f"if [[ -s " + " && -s ".join(final_files) + " ]]; then\n"
-            cleanup_command += f"  rm -rf {tmp_directory}"
+            cleanup_command = f"if [[ -s " + " && -s ".join(final_files) + " ]]; then"
+            cleanup_command += f"\n  rm -rf {tmp_directory}"
             cleanup_command += "\n  rm " + "\n  rm ".join(cleanup_files)
             cleanup_command += "\nelse"
             cleanup_command += "\n  echo 'Final output VCF(s) is missing; not removing intermediate files!'"
@@ -306,4 +309,3 @@ if __name__ == "__main__":
         remove = args.remove, 
         dry_run = args.dry_run
     )
-
