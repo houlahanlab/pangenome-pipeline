@@ -1,6 +1,5 @@
 ---
 project_name: GRCh38_linear
-output_directory: /workspace/lab/houlahanlab/projects/tcga-pangenome-snv/data/alignments/GRCh38_linear
 # reference files
 reference: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Reference-Fasta-Files/GRCh38.d1.vd1.fa
 ref_gbz: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch38_no_alts/GRCh38.d1.vd1_vg.gbz
@@ -27,18 +26,16 @@ gatk:
   time: '8:0:0'
   mem: '8G'
   cpus: 2
+mutect2:
+  time: '4:0:0'
+  mem: '4G'
+  cpus: 1
+somaticsniper:
+  time: '4:0:0'
+  mem: '4G'
+  cpus: 1
 strelka:
   ref: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Reference-Fasta-Files/GRCh38.d1.vd1_primary_only.fa
   time: '4:0:0'
   mem: '12G'
-  cpus: 1
-somaticsniper:
-  ref: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Reference-Fasta-Files/GRCh38.d1.vd1_primary_only.fa
-  time: '4:0:0'
-  mem: '8G'
-  cpus: 1
-mutect2:
-  ref: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Reference-Fasta-Files/GRCh38.d1.vd1_primary_only.fa
-  time: '4:0:0'
-  mem: '8G'
   cpus: 1

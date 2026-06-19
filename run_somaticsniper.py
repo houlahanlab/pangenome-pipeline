@@ -2,7 +2,6 @@
 GATK-recalibrated BAM files."""
 
 import os
-#import subprocess
 import yaml
 import argparse
 #import pysam
@@ -104,7 +103,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
 
     somaticsniper_executable = tool_data['somaticsniper_path']
     readcount_executable = tool_data['readcount_path']
-    reference = tool_data['somaticsniper']['ref']
+    reference = tool_data['reference']
 
     # load sample information
     with open(data_config, 'r') as file:
@@ -162,11 +161,10 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             os.makedirs(smp_directory, exist_ok=True)
 
             # indicate output files
-            #output_stem = os.path.join(smp_directory, f"{sample}")
             somaticsniper_vcf = f"{sample}_somaticsniper_variants.vcf"
             nm_bam = f"{sample}_NM.bam"
             tumour_pileup = f"{sample}.pileup"
-            tumour_readcounts = f"{sample}_readcounts"
+            tumour_readcounts = f"{sample}.readcounts"
             filtered_vcf = f"{sample}_SomaticSniper_hc_filtered.vcf.gz"
 
             job_id = []
@@ -185,6 +183,8 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
                     vcf = somaticsniper_vcf
                 )
 
+            cleanup_files.append(f"{smp_directory}/{somaticsniper_vcf}")
+
             # collect metrics for final bam
             if is_file_missing_or_empty(filtered_vcf):
                 filter_command = run_sniper_filters(
@@ -198,11 +198,11 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
                     stem = sample
                 )
             
-            cleanup_files.append(nm_bam)
-            cleanup_files.append(f"{nm_bam}.bai")
-            cleanup_files.append(tumour_pileup)
-            cleanup_files.append(tumour_readcounts)
-            cleanup_files.append(f"{sample}.SNPfilter*")
+            cleanup_files.append(f"{smp_directory}/{nm_bam}")
+            cleanup_files.append(f"{smp_directory}/{nm_bam}.bai")
+            cleanup_files.append(f"{smp_directory}/{tumour_pileup}")
+            cleanup_files.append(f"{smp_directory}/{tumour_readcounts}")
+            cleanup_files.append(f"{smp_directory}/{sample}.SNPfilter*")
         
             call_commands = list(filter(None, [somsnip_command, filter_command]))
 
@@ -227,7 +227,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             else:
                 print(f"      >> SomaticSniper step already completed; no jobs to submit.", file = log)
 
-            final_files.append(filtered_vcf)
+            final_files.append(f"{smp_directory}/{filtered_vcf}")
 
         # do cleanup once per donor
         if remove:

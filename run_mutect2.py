@@ -27,7 +27,7 @@ def get_sm_tag(bam_file):
     return list(sample_name)[0]
 
 
-def run_mutect2(reference, tumour, vcf, normal, normal_id, tmp_dir, java_mem, gnomad, pon, n_cpus, targets):
+def run_mutect2(reference, tumour, vcf, normal, normal_id, tmp_dir, java_mem, n_cpus=None, gnomad=None, pon=None, targets=None):
     """Run Mutect2 on either T/N pair or in tumour-only mode"""
 
     java = f"--java-options '{java_mem} -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1 -Djava.io.tmpdir={tmp_dir}'"
@@ -116,7 +116,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
     with open(tool_config, 'r') as file:
         tool_data = yaml.safe_load(file)
 
-    reference = tool_data['mutect2']['ref']
+    reference = tool_data['reference']
 
     # load sample information
     with open(data_config, 'r') as file:
@@ -192,9 +192,8 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
                     vcf = mutect2_vcf,
                     tmp_dir = tmp_directory,
                     java_mem = java_mem,
-                    gnomad = tool_data['gnomad'],
-                    pon = tool_data['pon'],
-                    n_cpus = tool_data['mutect2']['n_cpus']
+                    gnomad = tool_data['germline_resource'],
+                    pon = tool_data['pon']
                 )
 
             #cleanup_files.append(os.path.join(smp_directory, 'workspace'))
@@ -203,8 +202,11 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             if is_file_missing_or_empty(filtered_vcf):
                 filter_command = run_filter_vcf(
                     conda_path = tool_data['conda_path'],
+                    reference = reference,
                     vcf = mutect2_vcf, 
-                    filtered_vcf = filtered_vcf
+                    filtered_vcf = filtered_vcf,
+                    tmp_dir = tmp_directory,
+                    java_mem = java_mem,
                 )
             
             call_commands = list(filter(None, [mutect2_command, filter_command]))
