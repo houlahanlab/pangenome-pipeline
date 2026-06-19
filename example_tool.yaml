@@ -12,8 +12,9 @@ pon: /workspace/lab/houlahanlab/resources/germline_resource/1000g_pon.hg38.vcf.g
 germline_resource: /workspace/lab/houlahanlab/resources/germline_resource/af-only-gnomad.hg38.vcf.gz
 target_regions: /workspace/lab/houlahanlab/resources/agilent_sureselect_exon/Agilent_SureSelect_All_Exon_V5.bed.gz
 # tool versions
-vg_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/vg_v1.61.0.sif'
 conda_path: /workspace/lab/houlahanlab/software/micromamba/bin/conda
+vg_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/vg_v1.61.0.sif'
+deepsomatic_path: 'apptainer exec /workspace/lab/houlahanlab/software/DeepSomatic/deepsomatic_1.10.0.sif'
 strelka_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/strelka_2.9.10--h9ee0642_1.sif'
 somaticsniper_path: '/workspace/lab/houlahanlab/software/somatic-sniper'
 readcount_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/bam-readcount_1.0.1.sif'
@@ -26,6 +27,11 @@ gatk:
   time: '8:0:0'
   mem: '8G'
   cpus: 2
+deepsomatic:
+  model: WES # either WES, WGS, FFPE_WES or FFPE_WGS; TUMOR_ONLY tag will be added automatically if relevant
+  time: '12:0:0'
+  mem: '26G'
+  cpus: 4
 mutect2:
   time: '4:0:0'
   mem: '4G'
