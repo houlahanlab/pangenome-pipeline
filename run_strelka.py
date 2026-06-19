@@ -149,7 +149,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
 
             # indicate output files
             strelka_vcf = os.path.join(smp_directory, "results/variants/somatic.snvs.vcf.gz")
-            filtered_vcf = os.path.join(smp_directory, f"{sample}_pass_variants.vcf")
+            filtered_vcf = os.path.join(smp_directory, f"{sample}_Strelka_pass_variants.vcf")
 
             job_id = []
 
@@ -273,4 +273,3 @@ if __name__ == "__main__":
         remove = args.remove, 
         dry_run = args.dry_run
     )
-
