@@ -173,7 +173,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             cd_command = f"# move to working directory\ncd {smp_directory}"
             somsnip_command, filter_command = None, None
 
-            # run alignment
+            # run variant caller
             if is_file_missing_or_empty(somaticsniper_vcf):
                 somsnip_command = run_somaticsniper(
                     somsnip_executable = somaticsniper_executable,
@@ -185,7 +185,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
 
             cleanup_files.append(f"{smp_directory}/{somaticsniper_vcf}")
 
-            # collect metrics for final bam
+            # filter variant calls
             if is_file_missing_or_empty(filtered_vcf):
                 filter_command = run_sniper_filters(
                     somsnip_executable = somaticsniper_executable,

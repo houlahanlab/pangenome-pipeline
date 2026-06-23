@@ -183,7 +183,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             mutect2_command, filter_command = None, None
             java_mem = get_java_mem(tool_data['mutect2']['mem'])
 
-            # run alignment
+            # run variant caller
             if is_file_missing_or_empty(mutect2_vcf):
                 mutect2_command = run_mutect2(
                     reference = reference,
@@ -200,8 +200,9 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
 
             cleanup_files.append(mutect2_vcf)
             cleanup_files.append(f"{mutect2_vcf}.tbi")
+            cleanup_files.append(f"{mutect2_vcf}.stats")
 
-            # collect metrics for final bam
+            # filter variant calls
             if is_file_missing_or_empty(filtered_vcf):
                 filter_command = run_filter_vcf(
                     conda_path = tool_data['conda_path'],
