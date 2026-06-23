@@ -20,7 +20,7 @@ def run_deepsomatic(deepsomatic_executable, model, reference, tumour, tumour_id,
     tool_comment = "# run deep somatic"
     tool_command = [
         deepsomatic_executable, "run_deepsomatic",
-        "--model_type=", model,
+        f"--model_type={model}",
         "--ref", reference,
         "--reads_tumor", tumour,
         "--sample_name_tumor", tumour_id,
@@ -103,7 +103,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
     # add details to log file
     print(f"\nLinear reference file used is {reference}", file = log)
     print(f"\nUsing DeepSomatic version: {deepsomatic_executable}", file = log)
-    #print("Using samtools/bcftools version: 1.23.1", file = log)
+    print("Using samtools/bcftools version: 1.23.1", file = log)
     print(f"\n----------\nProcessing {n_patients} patients...", file = log)
 
     # initiate object to hold job_ids
@@ -150,15 +150,15 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             os.makedirs(smp_directory, exist_ok=True)
 
             # indicate output files
-            deepsomatic_vcf = os.path.join(smp_directory, f"{sample}__deepsomatic.vcf.gz")
-            filtered_vcf = os.path.join(smp_directory, f"{sample}_pass_variants.vcf")
+            deepsomatic_vcf = os.path.join(smp_directory, f"{sample}_DeepSomatic_raw.vcf.gz")
+            filtered_vcf = os.path.join(smp_directory, f"{sample}_DeepSomatic_pass_variants.vcf")
 
             job_id = []
 
             ## Step 1: DeepSomatic
             deepsomatic_command, filter_command = None, None
 
-            # run alignment
+            # run variant caller
             if is_file_missing_or_empty(deepsomatic_vcf):
                 deepsomatic_command = run_deepsomatic(
                     deepsomatic_executable,
@@ -173,11 +173,12 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
                     vcf = deepsomatic_vcf,
                     tmp_dir = tmp_directory,
                     n_cpus = tool_data['deepsomatic']['cpus']
-                    )
+                )
 
-            #cleanup_files.append(os.path.join(smp_directory, 'workspace'))
+            #cleanup_files.append(deepsomatic_vcf)
+            #cleanup_files.append(f"{deepsomatic_vcf}.tbi")
 
-            # collect metrics for final bam
+            # filter variant calls
             if is_file_missing_or_empty(filtered_vcf):
                 filter_command = run_filter_vcf(
                     conda_path = tool_data['conda_path'],
@@ -190,7 +191,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             # write slurm script and sbatch (unless dry-run)
             print(f"    Submitting job for DeepSomatic...", file = log)
 
-            if len(call_commands) > 0 and is_file_missing_or_empty(filtered_vcf):   
+            if len(call_commands) > 0 and is_file_missing_or_empty(f"{filtered_vcf}.gz"):
 
                 job_id, script = write_script(
                     args,
@@ -214,7 +215,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
         if remove:
             cleanup_command = f"if [[ -s " + " && -s ".join(final_files) + " ]]; then"
             cleanup_command += f"\n  rm -rf {tmp_directory}"
-            cleanup_command += "\n  rm -rf " + "\n  rm -rf ".join(cleanup_files)
+            #cleanup_command += "\n  rm " + "\n  rm ".join(cleanup_files)
             cleanup_command += "\nelse"
             cleanup_command += "\n  echo 'Final output VCF(s) is missing; not removing intermediate files!'"
             cleanup_command += "\n  exit 1"
