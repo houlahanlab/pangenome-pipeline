@@ -5,7 +5,7 @@ import os
 import subprocess
 import yaml
 import argparse
-#import pysam
+import pysam
 
 from datetime import datetime
 from simple_slurm import Slurm
@@ -142,8 +142,8 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
 
         normal_id, normal_bam = None, None
         if len(normal_samples) > 0:
-            normal_id = normal_samples[0]
-            normal_bam = sample_data[donor]['normal'][normal_id]
+            normal_bam = sample_data[donor]['normal'][normal_samples[0]]
+            normal_id = get_sm_tag(normal_bam)
             
             if not os.path.exists(normal_bam):
                 print(f"<<Error: Normal BAM file {normal_bam} not found. Running tumour-only mode for {donor}...>>", file = log)
