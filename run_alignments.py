@@ -158,16 +158,63 @@ def run_gatk_bqsr(reference, in_bam, out_table, indels, out_bam, tmp_dir, java_m
     return final_command
 
 
-def run_gatk_qc(bam, metrics, tmp_dir):
+def run_gatk_qc(bam, metrics, tmp_dir, java_mem):
     """Collect summary alignment metrics from recalibrated BAM."""
+
+    java = f"--java-options '{java_mem} -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1'"
 
     gatk_comment = "# collect alignment summary metrics"
     gatk_command = [
-        "gatk CollectAlignmentSummaryMetrics",
+        "gatk", java, "CollectAlignmentSummaryMetrics",
         "-I", bam,
         "-O", metrics,
         "--TMP_DIR", tmp_dir
     ]
+
+    final_command = gatk_comment + "\n" + " ".join(map(str, gatk_command))
+    return final_command
+
+
+def run_gatk_pileup(reference, bam, pileup, tmp_dir, intervals, gnomad, java_mem):
+    """Generate pileup metrics for inferring contamination."""
+
+    java = f"--java-options '{java_mem} -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1'"
+
+    gatk_comment = "# generate pileup for contamination estimate"
+    gatk_command = [
+        "gatk", java, "GetPileupSummaries",
+        "-R", reference,
+        "-I", bam,
+        "-O", pileup,
+        "--tmp-dir", tmp_dir
+    ]
+
+    if intervals:
+        gatk_command.append(f"-L {intervals}")
+
+    if gnomad:
+        gatk_command.append(f"-V {gnomad}")
+
+    is_complete = f"echo 'pileup completed successfully' > {pileup}.COMPLETE"
+
+    final_command = gatk_comment + "\n" + " ".join(map(str, gatk_command)) + "\n" + is_complete
+    return final_command
+
+
+def run_gatk_contamination(tumour, normal, output, java_mem):
+    """Calculate the fraction of reads coming from cross-sample contamination."""
+
+    java = f"--java-options '{java_mem} -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1'"
+
+    gatk_comment = "# collect contamination estimates"
+    gatk_command = [
+        "gatk", java, "CalculateContamination",
+        "-I", tumour,
+        "-O", output
+    ]
+
+    if normal:
+        gatk_command.append(f"--matched-normal {normal}")
 
     final_command = gatk_comment + "\n" + " ".join(map(str, gatk_command))
     return final_command
@@ -283,12 +330,14 @@ def main(tool_config:str, data_config:str, out_dir:str, out_bams_filename:str, r
             recal_table = os.path.join(smp_directory, f"{sample}_recal.table")
             recal_bam = os.path.join(smp_directory, f"{sample}_recalibrated.bam")
             bam_qc = os.path.join(smp_directory, f"{sample}_final_alignment_metrics.txt")
+            bam_pileup = os.path.join(smp_directory, f"{sample}.pileup")
 
             cleanup_files.append(surject_bam)
             cleanup_files.append(sorted_bam)
             cleanup_files.append(sorted_bam.replace('bam','bai'))
             cleanup_files.append(markdup_bam)
             cleanup_files.append(markdup_bam.replace('bam','bai'))
+            cleanup_files.append(bam_pileup)
 
             job_id = []
 
@@ -422,25 +471,40 @@ def main(tool_config:str, data_config:str, out_dir:str, out_bams_filename:str, r
             final_bams.append(recal_bam)
 
             ## Step 3: BAM QC
-            qc_command = None
+            qc_command, pileup_command = None, None
+            java_mem = get_java_mem("4G")
 
             # collect metrics for final bam
             if is_file_missing_or_empty(bam_qc):
                 qc_command = run_gatk_qc(
-                    recal_bam,
-                    bam_qc,
-                    tmp_directory
+                    bam = recal_bam,
+                    metrics = bam_qc,
+                    tmp_dir = tmp_directory,
+                    java_mem = java_mem
                     )
+
+            if is_file_missing_or_empty(f"{bam_pileup}.COMPLETE"):
+                pileup_command = run_gatk_pileup(
+                    reference,
+                    bam = recal_bam,
+                    pileup = bam_pileup,
+                    tmp_dir = tmp_directory,
+                    intervals = tool_data['target_regions'],
+                    gnomad = tool_data['germline_resource'],
+                    java_mem = java_mem
+                    )
+
+            qc_commands = list(filter(None, [qc_command, pileup_command]))
 
             # write slurm script and sbatch (unless dry-run)
             print(f"    Submitting job for QC step...", file = log)
 
-            if qc_command is not None:
+            if qc_commands is not None:
 
                 job_id, script = write_script(
                     args,
                     job_name = f"run_bamqc_{sample}",
-                    command = [qc_command],
+                    command = qc_commands,
                     job_parameters = {"mem": "4G", "time": "8:0:0"},
                     depends = [job_id]
                     )
@@ -453,6 +517,56 @@ def main(tool_config:str, data_config:str, out_dir:str, out_bams_filename:str, r
 
             else:
                 print(f"      >> QC step already completed; no jobs to submit.", file = log)
+
+
+        # use tumour/normal pileups to estimate contamination
+        contamination_commands = []
+
+        tumour_samples = list(out_bams[donor]['tumour'].keys())
+        for tumour in tumour_samples:
+
+            tumour_pileup = os.path.join(patient_directory, tumour, f"{tumour}.pileup")
+
+            normal_samples = list(out_bams[donor]['normal'].keys())
+            for normal in normal_samples:
+
+                normal_pileup = os.path.join(patient_directory, normal, f"{normal}.pileup")
+
+                outfile = os.path.join(smp_directory, f"{tumour}_vs_{normal}_contamination_estimate.tsv")
+
+                # collect metrics for final bam
+                contam_command = None
+                if is_file_missing_or_empty(outfile):
+                    contam_command = run_gatk_contamination(
+                        tumour = tumour_pileup,
+                        normal = normal_pileup,
+                        output = outfile,
+                        java_mem = get_java_mem("4G")
+                        )
+
+                    contamination_commands.append(contam_command)
+
+        if len(contamination_commands) > 0:
+
+            # write slurm script and sbatch (unless dry-run)
+            print(f"    Submitting job for CalculateContamination step...", file = log)
+
+            job_id, script = write_script(
+                args,
+                job_name = f"run_estimate_contamination_{donor}",
+                command = contamination_commands,
+                job_parameters = {"mem": "4G", "time": "4:0:0"},
+                depends = patient_jobs
+                )
+
+            patient_jobs.append(job_id)
+
+            print(f"      >> sbatch {script}", file = log)
+            if not dry_run:
+                print(f"      >> job id is {job_id}", file = log)
+
+        else:
+            print(f"      >> CalculateContamination step already completed; no jobs to submit.", file = log)
 
 
         # do cleanup once per donor
