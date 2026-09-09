@@ -4,15 +4,12 @@ GATK-recalibrated BAM files."""
 import os
 import yaml
 import argparse
-#import pysam
 
 from datetime import datetime
-from simple_slurm import Slurm
-
 from utilities import write_script,collect_job_stats,is_file_missing_or_empty
 
 ### subroutines
-def get_sm_tag(bam_file):
+def get_sm_tag(bam_file:str) -> str:
     """Extract SM tag from BAM header (this will be the VCF sample ID)."""
 
     # Open the BAM file
@@ -26,7 +23,7 @@ def get_sm_tag(bam_file):
     return list(sample_name)[0]
 
 
-def run_strelka(strelka_executable, reference, targets, tumour, normal, rundir):
+def run_strelka(strelka_executable:str, reference:str, targets:str, tumour:str, normal:str, rundir:str) -> str:
     """Run Strelka on the tumour/normal pair."""
 
     tool_comment = "# run strelka"
@@ -45,7 +42,7 @@ def run_strelka(strelka_executable, reference, targets, tumour, normal, rundir):
     return final_command
 
 
-def run_filter_vcf(conda_path, vcf, filtered_vcf):
+def run_filter_vcf(conda_path:str, vcf:str, filtered_vcf:str) -> str:
     """Filter raw Strelka variant calls."""
 
     tool_comment = "# filter variants to only PASS"
@@ -62,7 +59,11 @@ def run_filter_vcf(conda_path, vcf, filtered_vcf):
     return final_command
 
 
-def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry_run:bool = False):
+def strelka_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry_run:bool = False) -> str:
+
+    # load tool/paramter information
+    with open(tool_config, 'r') as file:
+        tool_data = yaml.safe_load(file)
 
     # set up logging
     log_directory = os.path.join(out_dir, 'logs')
@@ -86,23 +87,25 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
     if dry_run:
         print("  >> trial mode selected (--dry_run); jobs will not be submitted", file = log)
 
-    # load tool/paramter information
-    with open(tool_config, 'r') as file:
-        tool_data = yaml.safe_load(file)
-
+    # extract tool paths from config
     strelka_executable = tool_data['strelka_path']
-    reference = tool_data['strelka']['ref']
+
+    # extract reference files from config
+    reference = tool_data['reference']
+    if tool_data['strelka']['ref']:
+        reference = tool_data['strelka']['ref']
+
+    # add details to log file
+    print(f"\nLinear reference file used is {reference}", file = log)
+    print(f"\nUsing Strelka version: {strelka_executable}", file = log)
+    print("Using samtools/bcftools version: 1.23.1", file = log)
 
     # load sample information
     with open(data_config, 'r') as file:
         sample_data = yaml.safe_load(file)
 
     n_patients = len(sample_data.keys())
-
-    # add details to log file
-    print(f"\nLinear reference file used is {reference}", file = log)
-    print(f"\nUsing Strelka version: {strelka_executable}", file = log)
-    print("Using samtools/bcftools version: 1.23.1", file = log)
+    
     print(f"\n----------\nProcessing {n_patients} patients...", file = log)
 
     # initiate object to hold job_ids
@@ -110,6 +113,15 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
 
     # work through each sample
     for donor in sample_data.keys():
+
+        print(f"\nProcessing donor: {donor}", file = log)
+
+        patient_directory = os.path.join(out_dir, donor)
+        os.makedirs(patient_directory, exist_ok=True)
+
+        patient_jobs = []
+        final_files = []
+        cleanup_files = []
 
         # check for 'normal' sample
         normal_samples = list(sample_data[donor]['normal'].keys())
@@ -120,28 +132,24 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             normal_bam = sample_data[donor]['normal'][normal_id]
             
             if not os.path.exists(normal_bam):
-                print(f"<<Error: Normal BAM file {normal_bam} not found. Skipping {donor}...>>", file = log)
+                print(f"  <<Error: Normal BAM file {normal_bam} not found. Skipping {donor}...>>", file = log)
                 continue
+            else:
+                print(f"\n  Using normal BAM: {normal_bam}", file = log)
 
-        patient_directory = os.path.join(out_dir, donor)
-        os.makedirs(patient_directory, exist_ok=True)
-
-        patient_jobs = []
-        final_files = []
-        cleanup_files = []
-
-        n_samples = len(sample_data[donor].keys())
-        print(f"\nProcessing {n_samples} tumour samples for donor: {donor}", file = log)
+        # process tumour sample(s)
+        n_samples = len(sample_data[donor]['tumour'].keys())
+        print(f"\n  Processing {n_samples} tumour samples for donor: {donor}", file = log)
 
         for sample in (sample_data[donor]['tumour'].keys()):
 
-            print(f"  Processing {sample}", file = log)
+            print(f"    Processing {sample}", file = log)
 
             tumour_bam = sample_data[donor]['tumour'][sample]
 
             # process all fastqs for each sample
             if not os.path.exists(tumour_bam):
-                print(f"<<Error: BAM file {tumour_bam} not found. Skipping {sample}...>>", file = log)
+                print(f"      <<Error: BAM file {tumour_bam} not found. Skipping {sample}...>>", file = log)
                 continue
  
             smp_directory = os.path.join(patient_directory, sample)
@@ -150,8 +158,6 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             # indicate output files
             strelka_vcf = os.path.join(smp_directory, "results/variants/somatic.snvs.vcf.gz")
             filtered_vcf = os.path.join(smp_directory, f"{sample}_Strelka_pass_variants.vcf")
-
-            job_id = []
 
             ## Step 1: Strelka
             strelka_command, filter_command = None, None
@@ -165,7 +171,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
                     tumour = tumour_bam, 
                     normal = normal_bam, 
                     rundir = smp_directory
-                    )
+                )
 
             cleanup_files.append(os.path.join(smp_directory, 'workspace'))
 
@@ -180,31 +186,32 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             call_commands = list(filter(None, [strelka_command, filter_command]))
 
             # write slurm script and sbatch (unless dry-run)
-            print(f"    Submitting job for Strelka...", file = log)
+            print(f"      Submitting job for Strelka...", file = log)
 
             if len(call_commands) > 0 and is_file_missing_or_empty(filtered_vcf):   
 
-                job_id, script = write_script(
+                strelka_job_id, strelka_script = write_script(
                     args,
                     job_name = f"run_strelka_{sample}",
                     command = call_commands,
                     job_parameters = tool_data['strelka']
-                    )
+                )
 
-                patient_jobs.append(job_id)
+                patient_jobs.append(strelka_job_id)
 
-                print(f"      >> sbatch {script}", file = log)
+                print(f"       >> sbatch {strelka_script}", file = log)
                 if not dry_run:
-                    print(f"      >> job id is {job_id}", file = log)
+                    print(f"       >> job id is {strelka_job_id}", file = log)
 
             else:
-                print(f"      >> Strelka step already completed; no jobs to submit.", file = log)
+                print(f"       >> Strelka step already completed; no jobs to submit.", file = log)
 
             final_files.append(f"{filtered_vcf}.gz")
 
         # do cleanup once per donor
         if remove:
-            cleanup_command = f"if [[ -s " + " && -s ".join(final_files) + " ]]; then\n"
+            cleanup_command = "# check for final VCF(s), then cleanup intermediates"
+            cleanup_command += f"\nif [[ -s " + " && -s ".join(final_files) + " ]]; then"
             cleanup_command += "\n  rm -rf " + "\n  rm -rf ".join(cleanup_files)
             cleanup_command += "\nelse"
             cleanup_command += "\n  echo 'Final output VCF(s) is missing; not removing intermediate files!'"
@@ -214,33 +221,35 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             print(f"\n  Running clean-up step for {donor}...", file = log)
 
             if len(patient_jobs) > 0:
-                job_id, script = write_script(
+                clean_job_id, clean_script = write_script(
                     args,
                     job_name = f"run_cleanup_{donor}",
                     command = [cleanup_command],
                     job_parameters = {"mem": "256M", "time": "1:0:0"},
                     depends = patient_jobs
-                    )
+                )
 
-                patient_jobs.append(job_id)
+                patient_jobs.append(clean_job_id)
 
-                print(f"    >> sbatch {script}", file = log)
+                print(f"    >> sbatch {clean_script}", file = log)
                 if not dry_run:
-                    print(f"    >> job id is {job_id}", file = log)
+                    print(f"    >> job id is {clean_job_id}", file = log)
 
         all_jobs += patient_jobs
 
     # write slurm script and sbatch (unless dry-run)
+    sacct_job_id, sacct_script = None, None
+
     if not dry_run:
         sacct_out = f"{out_dir}/logs/slurm_job_metrics_{current_run}.out"
         sacct_command = collect_job_stats(all_jobs, sacct_out)
-        job_id, script = write_script(
+        sacct_job_id, sacct_script = write_script(
             args,
             job_name = "collect_job_metrics",
             command = [sacct_command],
             job_parameters = {"mem": "256M", "time": "1:0:0"},
             depends = all_jobs 
-            )
+        )
 
     # add details to log file
     print("\n----------\nAll patients processed.", file = log)
@@ -249,9 +258,11 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
     print(f"\nTotal number of jobs to run: {n_jobs}", file = log)
 
     if not dry_run:
-        print(f"  >> Final job id is: {job_id}", file = log)
+        print(f"  >> Final job id is: {sacct_job_id}", file = log)
 
     log.close()
+
+    return (sacct_job_id)
 
 
 ### main
@@ -266,10 +277,10 @@ if __name__ == "__main__":
     parser.add_argument("--dry_run", action = "store_true", help = "is this a test?")
     args = parser.parse_args()
 
-    main(
-        tool_config = args.tool_config, 
-        data_config = args.data_config, 
+    strelka_pipeline(
+        tool_config = args.tool_config,
+        data_config = args.data_config,
         out_dir = args.out_dir,
-        remove = args.remove, 
+        remove = args.remove,
         dry_run = args.dry_run
     )

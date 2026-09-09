@@ -6,12 +6,10 @@ import yaml
 import argparse
 
 from datetime import datetime
-from simple_slurm import Slurm
-
 from utilities import write_script,collect_job_stats,is_file_missing_or_empty
 
 ### subroutines
-def run_deepsomatic(deepsomatic_executable, model, reference, tumour, tumour_id, vcf, tmp_dir, normal=None, normal_id=None, pon=None, targets=None, n_cpus=None):
+def run_deepsomatic(tool:str, model:str, reference:str, tumour:str, tumour_id:str, vcf:str, tmp_dir:str, normal:str = None, normal_id:str = None, pon:str = None, targets:str = None, n_cpus=1) -> str:
     """Run DeepSomatic on the tumour/normal pair."""
 
     if not normal:
@@ -19,7 +17,7 @@ def run_deepsomatic(deepsomatic_executable, model, reference, tumour, tumour_id,
 
     tool_comment = "# run deep somatic"
     tool_command = [
-        deepsomatic_executable, "run_deepsomatic",
+        tool, "run_deepsomatic",
         f"--model_type={model}",
         "--ref", reference,
         "--reads_tumor", tumour,
@@ -46,7 +44,7 @@ def run_deepsomatic(deepsomatic_executable, model, reference, tumour, tumour_id,
     return final_command
 
 
-def run_filter_vcf(conda_path, vcf, filtered_vcf):
+def run_filter_vcf(conda_path:str, vcf:str, filtered_vcf:str) -> str:
     """Filter raw DeepSomatic variant calls."""
 
     tool_comment = "# filter variants to only PASS"
@@ -63,7 +61,11 @@ def run_filter_vcf(conda_path, vcf, filtered_vcf):
     return final_command
 
 
-def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry_run:bool = False):
+def deepsomatic_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry_run:bool = False) -> str:
+
+   # load tool/paramter information
+    with open(tool_config, 'r') as file:
+        tool_data = yaml.safe_load(file)
 
     # set up logging
     log_directory = os.path.join(out_dir, 'logs')
@@ -87,12 +89,16 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
     if dry_run:
         print("  >> trial mode selected (--dry_run); jobs will not be submitted", file = log)
 
-    # load tool/paramter information
-    with open(tool_config, 'r') as file:
-        tool_data = yaml.safe_load(file)
-
+    # extract tool paths from config
     deepsomatic_executable = tool_data['deepsomatic_path']
+
+    # extract reference files from config
     reference = tool_data['reference']
+
+    # add details to log file
+    print(f"\nLinear reference file used is {reference}", file = log)
+    print(f"\nUsing DeepSomatic version: {deepsomatic_executable}", file = log)
+    print("Using samtools/bcftools version: 1.23.1", file = log)
 
     # load sample information
     with open(data_config, 'r') as file:
@@ -100,10 +106,6 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
 
     n_patients = len(sample_data.keys())
 
-    # add details to log file
-    print(f"\nLinear reference file used is {reference}", file = log)
-    print(f"\nUsing DeepSomatic version: {deepsomatic_executable}", file = log)
-    print("Using samtools/bcftools version: 1.23.1", file = log)
     print(f"\n----------\nProcessing {n_patients} patients...", file = log)
 
     # initiate object to hold job_ids
@@ -153,15 +155,13 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             deepsomatic_vcf = os.path.join(smp_directory, f"{sample}_DeepSomatic_raw.vcf.gz")
             filtered_vcf = os.path.join(smp_directory, f"{sample}_DeepSomatic_pass_variants.vcf")
 
-            job_id = []
-
             ## Step 1: DeepSomatic
             deepsomatic_command, filter_command = None, None
 
             # run variant caller
             if is_file_missing_or_empty(deepsomatic_vcf):
                 deepsomatic_command = run_deepsomatic(
-                    deepsomatic_executable,
+                    tool = deepsomatic_executable,
                     model = tool_data['deepsomatic']['model'],
                     reference = reference,
                     targets = tool_data['target_regions'],
@@ -175,8 +175,8 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
                     n_cpus = tool_data['deepsomatic']['cpus']
                 )
 
-            #cleanup_files.append(deepsomatic_vcf)
-            #cleanup_files.append(f"{deepsomatic_vcf}.tbi")
+            cleanup_files.append(deepsomatic_vcf)
+            cleanup_files.append(f"{deepsomatic_vcf}.tbi")
 
             # filter variant calls
             if is_file_missing_or_empty(filtered_vcf):
@@ -193,18 +193,18 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
 
             if len(call_commands) > 0 and is_file_missing_or_empty(f"{filtered_vcf}.gz"):
 
-                job_id, script = write_script(
+                ds_job_id, ds_script = write_script(
                     args,
                     job_name = f"run_deepsomatic_{sample}",
                     command = call_commands,
                     job_parameters = tool_data['deepsomatic']
-                    )
+                )
 
-                patient_jobs.append(job_id)
+                patient_jobs.append(ds_job_id)
 
-                print(f"      >> sbatch {script}", file = log)
+                print(f"      >> sbatch {ds_script}", file = log)
                 if not dry_run:
-                    print(f"      >> job id is {job_id}", file = log)
+                    print(f"      >> job id is {ds_job_id}", file = log)
 
             else:
                 print(f"      >> DeepSomatic step already completed; no jobs to submit.", file = log)
@@ -213,9 +213,10 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
 
         # do cleanup once per donor
         if remove:
-            cleanup_command = f"if [[ -s " + " && -s ".join(final_files) + " ]]; then"
+            cleanup_command = "# check for final VCF(s), then cleanup intermediates"
+            cleanup_command += f"\nif [[ -s " + " && -s ".join(final_files) + " ]]; then"
             cleanup_command += f"\n  rm -rf {tmp_directory}"
-            #cleanup_command += "\n  rm " + "\n  rm ".join(cleanup_files)
+            cleanup_command += "\n  rm " + "\n  rm ".join(cleanup_files)
             cleanup_command += "\nelse"
             cleanup_command += "\n  echo 'Final output VCF(s) is missing; not removing intermediate files!'"
             cleanup_command += "\n  exit 1"
@@ -224,19 +225,19 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             print(f"\n  Running clean-up step for {donor}...", file = log)
 
             if len(patient_jobs) > 0:
-                job_id, script = write_script(
+                clean_job_id, clean_script = write_script(
                     args,
                     job_name = f"run_cleanup_{donor}",
                     command = [cleanup_command],
                     job_parameters = {"mem": "256M", "time": "1:0:0"},
                     depends = patient_jobs
-                    )
+                )
 
-                patient_jobs.append(job_id)
+                patient_jobs.append(clean_job_id)
 
-                print(f"    >> sbatch {script}", file = log)
+                print(f"    >> sbatch {clean_script}", file = log)
                 if not dry_run:
-                    print(f"    >> job id is {job_id}", file = log)
+                    print(f"    >> job id is {clean_job_id}", file = log)
 
         all_jobs += patient_jobs
 
@@ -244,13 +245,13 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
     if not dry_run:
         sacct_out = f"{out_dir}/logs/slurm_job_metrics_{current_run}.out"
         sacct_command = collect_job_stats(all_jobs, sacct_out)
-        job_id, script = write_script(
+        sacct_job_id, sacct_script = write_script(
             args,
             job_name = "collect_job_metrics",
             command = [sacct_command],
             job_parameters = {"mem": "256M", "time": "1:0:0"},
             depends = all_jobs 
-            )
+        )
 
     # add details to log file
     print("\n----------\nAll patients processed.", file = log)
@@ -259,9 +260,11 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
     print(f"\nTotal number of jobs to run: {n_jobs}", file = log)
 
     if not dry_run:
-        print(f"  >> Final job id is: {job_id}", file = log)
+        print(f"  >> Final job id is: {sacct_job_id}", file = log)
 
     log.close()
+
+    return (sacct_job_id)
 
 
 ### main
@@ -276,7 +279,7 @@ if __name__ == "__main__":
     parser.add_argument("--dry_run", action = "store_true", help = "is this a test?")
     args = parser.parse_args()
 
-    main(
+    deepsomatic_pipeline(
         tool_config = args.tool_config, 
         data_config = args.data_config, 
         out_dir = args.out_dir,

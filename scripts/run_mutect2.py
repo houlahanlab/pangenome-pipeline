@@ -2,18 +2,15 @@
 GATK-recalibrated BAM files."""
 
 import os
-import subprocess
 import yaml
 import argparse
 import pysam
 
 from datetime import datetime
-from simple_slurm import Slurm
-
 from utilities import write_script,collect_job_stats,is_file_missing_or_empty,get_java_mem
 
 ### subroutines
-def get_sm_tag(bam_file):
+def get_sm_tag(bam_file:str) -> str:
     """Extract SM tag from BAM header (this will be the VCF sample ID)."""
 
     # Open the BAM file
@@ -27,14 +24,14 @@ def get_sm_tag(bam_file):
     return list(sample_name)[0]
 
 
-def run_mutect2(reference, tumour, vcf, normal, normal_id, tmp_dir, java_mem, n_cpus=None, gnomad=None, pon=None, targets=None):
+def run_mutect2(gatk:str, reference:str, tumour:str, vcf:str, normal:str, normal_id:str, tmp_dir:str, java_mem:str, n_cpus=None, gnomad=None, pon=None, targets=None) -> str:
     """Run Mutect2 on either T/N pair or in tumour-only mode"""
 
     java = f"--java-options '{java_mem} -XX:ParallelGCThreads=2 -XX:ConcGCThreads=1 -Djava.io.tmpdir={tmp_dir}'"
 
     tool_comment = "# run mutect2"
     tool_command = [
-        "gatk", java, "Mutect2",
+        gatk, java, "Mutect2",
         "-R", reference,
         "-I", tumour,
         "-O", vcf
@@ -60,7 +57,7 @@ def run_mutect2(reference, tumour, vcf, normal, normal_id, tmp_dir, java_mem, n_
     return final_command
 
 
-def run_filter_vcf(conda_path, reference, vcf, filtered_vcf, java_mem, tmp_dir):
+def run_filter_vcf(gatk:str, conda_path:str, reference:str, vcf:str, filtered_vcf:str, java_mem:str, tmp_dir:str) -> str:
     """Filter raw Mutect2 variant calls."""
 
     tmp_vcf = vcf.replace('raw','variants')
@@ -69,7 +66,7 @@ def run_filter_vcf(conda_path, reference, vcf, filtered_vcf, java_mem, tmp_dir):
 
     tool_comment1 = "# annotate mutect2 variants with filters"
     tool_command1 = [
-        "gatk", java, "FilterMutectCalls",
+        gatk, java, "FilterMutectCalls",
         "-R", reference,
         "-V", vcf,
         "-O", tmp_vcf
@@ -90,7 +87,11 @@ def run_filter_vcf(conda_path, reference, vcf, filtered_vcf, java_mem, tmp_dir):
     return final_command
 
 
-def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry_run:bool = False):
+def mutect2_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry_run:bool = False) -> str:
+
+   # load tool/paramter information
+    with open(tool_config, 'r') as file:
+        tool_data = yaml.safe_load(file)
 
     # set up logging
     log_directory = os.path.join(out_dir, 'logs')
@@ -114,11 +115,16 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
     if dry_run:
         print("  >> trial mode selected (--dry_run); jobs will not be submitted", file = log)
 
-    # load tool/paramter information
-    with open(tool_config, 'r') as file:
-        tool_data = yaml.safe_load(file)
+    # extract tool paths from config
+    gatk_executable = tool_data['gatk_path']
+    java_mem = get_java_mem(tool_data['mutect2']['mem'])
 
+    # extract reference files from config
     reference = tool_data['reference']
+
+    # add details to log file
+    print(f"\nLinear reference file used is {reference}", file = log)
+    print(f"Using gatk version: {gatk_executable}", file = log)
 
     # load sample information
     with open(data_config, 'r') as file:
@@ -126,9 +132,6 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
 
     n_patients = len(sample_data.keys())
 
-    # add details to log file
-    print(f"\nLinear reference file used is {reference}", file = log)
-    print("Using gatk version: 4.3.0.0 [with Picard version 2.27.5]", file = log)
     print(f"\n----------\nProcessing {n_patients} patients...", file = log)
 
     # initiate object to hold job_ids
@@ -137,17 +140,8 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
     # work through each sample
     for donor in sample_data.keys():
 
-        # check for 'normal' sample
-        normal_samples = list(sample_data[donor]['normal'].keys())
-
-        normal_id, normal_bam = None, None
-        if len(normal_samples) > 0:
-            normal_bam = sample_data[donor]['normal'][normal_samples[0]]
-            normal_id = get_sm_tag(normal_bam)
-            
-            if not os.path.exists(normal_bam):
-                print(f"<<Error: Normal BAM file {normal_bam} not found. Running tumour-only mode for {donor}...>>", file = log)
-
+        print(f"\nProcessing donor: {donor}", file = log)
+        
         patient_directory = os.path.join(out_dir, donor)
         tmp_directory = os.path.join(patient_directory, 'TEMP')
         os.makedirs(tmp_directory, exist_ok=True)
@@ -156,18 +150,33 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
         final_files = []
         cleanup_files = []
 
-        n_samples = len(sample_data[donor].keys())
-        print(f"\nProcessing {n_samples} tumour samples for donor: {donor}", file = log)
+        # check for 'normal' sample
+        normal_samples = list(sample_data[donor]['normal'].keys())
+
+        normal_id, normal_bam = None, None
+        if len(normal_samples) > 0:
+            normal_bam = sample_data[donor]['normal'][normal_samples[0]]
+            
+            if not os.path.exists(normal_bam):
+                print(f"\n  <<Error: Normal BAM file {normal_bam} not found. Running tumour-only mode for {donor}...>>", file = log)
+                normal_id = normal_samples[0]
+            else:
+                print(f"\n  Using normal BAM: {normal_bam}", file = log)
+                normal_id = get_sm_tag(normal_bam)
+
+        # process tumour sample(s)
+        n_samples = len(sample_data[donor]['tumour'].keys())
+        print(f"\n  Processing {n_samples} tumour samples for donor: {donor}", file = log)
 
         for sample in (sample_data[donor]['tumour'].keys()):
 
-            print(f"  Processing {sample}", file = log)
+            print(f"    Processing {sample}", file = log)
 
             tumour_bam = sample_data[donor]['tumour'][sample]
 
             # process all fastqs for each sample
             if not os.path.exists(tumour_bam):
-                print(f"<<Error: BAM file {tumour_bam} not found. Skipping {sample}...>>", file = log)
+                print(f"      <<Error: BAM file {tumour_bam} not found. Skipping {sample}...>>", file = log)
                 continue
  
             smp_directory = os.path.join(patient_directory, sample)
@@ -177,15 +186,13 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             mutect2_vcf = os.path.join(smp_directory, f"{sample}_Mutect2_raw.vcf.gz")
             filtered_vcf = os.path.join(smp_directory, f"{sample}_Mutect2_pass_variants.vcf")
 
-            job_id = []
-
             ## Step 1: Mutect2
             mutect2_command, filter_command = None, None
-            java_mem = get_java_mem(tool_data['mutect2']['mem'])
 
             # run variant caller
             if is_file_missing_or_empty(mutect2_vcf):
                 mutect2_command = run_mutect2(
+                    gatk = gatk_executable,
                     reference = reference,
                     targets = tool_data['target_regions'],
                     tumour = tumour_bam, 
@@ -205,6 +212,7 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             # filter variant calls
             if is_file_missing_or_empty(filtered_vcf):
                 filter_command = run_filter_vcf(
+                    gatk = gatk_executable,
                     conda_path = tool_data['conda_path'],
                     reference = reference,
                     vcf = mutect2_vcf, 
@@ -216,31 +224,32 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             call_commands = list(filter(None, [mutect2_command, filter_command]))
 
             # write slurm script and sbatch (unless dry-run)
-            print(f"    Submitting job for Mutect2...", file = log)
+            print(f"      Submitting job for Mutect2...", file = log)
 
             if len(call_commands) > 0 and is_file_missing_or_empty(f"{filtered_vcf}.gz"):
 
-                job_id, script = write_script(
+                m2_job_id, m2_script = write_script(
                     args,
                     job_name = f"run_mutect2_{sample}",
                     command = call_commands,
                     job_parameters = tool_data['mutect2']
-                    )
+                )
 
-                patient_jobs.append(job_id)
+                patient_jobs.append(m2_job_id)
 
-                print(f"      >> sbatch {script}", file = log)
+                print(f"       >> sbatch {m2_script}", file = log)
                 if not dry_run:
-                    print(f"      >> job id is {job_id}", file = log)
+                    print(f"       >> job id is {m2_job_id}", file = log)
 
             else:
-                print(f"      >> Mutect2 step already completed; no jobs to submit.", file = log)
+                print(f"       >> Mutect2 step already completed; no jobs to submit.", file = log)
 
             final_files.append(f"{filtered_vcf}.gz")
 
         # do cleanup once per donor
         if remove:
-            cleanup_command = f"if [[ -s " + " && -s ".join(final_files) + " ]]; then"
+            cleanup_command = "# check for final VCF(s), then cleanup intermediates"
+            cleanup_command += f"\nif [[ -s " + " && -s ".join(final_files) + " ]]; then"
             cleanup_command += f"\n  rm -rf {tmp_directory}"
             cleanup_command += "\n  rm " + "\n  rm ".join(cleanup_files)
             cleanup_command += "\nelse"
@@ -251,33 +260,35 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
             print(f"\n  Running clean-up step for {donor}...", file = log)
 
             if len(patient_jobs) > 0:
-                job_id, script = write_script(
+                clean_job_id, clean_script = write_script(
                     args,
                     job_name = f"run_cleanup_{donor}",
                     command = [cleanup_command],
                     job_parameters = {"mem": "256M", "time": "1:0:0"},
                     depends = patient_jobs
-                    )
+                )
 
-                patient_jobs.append(job_id)
+                patient_jobs.append(clean_job_id)
 
-                print(f"    >> sbatch {script}", file = log)
+                print(f"    >> sbatch {clean_script}", file = log)
                 if not dry_run:
-                    print(f"    >> job id is {job_id}", file = log)
+                    print(f"    >> job id is {clean_job_id}", file = log)
 
         all_jobs += patient_jobs
 
     # write slurm script and sbatch (unless dry-run)
+    sacct_job_id, sacct_script = None, None
+    
     if not dry_run:
         sacct_out = f"{out_dir}/logs/slurm_job_metrics_{current_run}.out"
         sacct_command = collect_job_stats(all_jobs, sacct_out)
-        job_id, script = write_script(
+        sacct_job_id, sacct_script = write_script(
             args,
             job_name = "collect_job_metrics",
             command = [sacct_command],
             job_parameters = {"mem": "256M", "time": "1:0:0"},
             depends = all_jobs 
-            )
+        )
 
     # add details to log file
     print("\n----------\nAll patients processed.", file = log)
@@ -286,9 +297,11 @@ def main(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry
     print(f"\nTotal number of jobs to run: {n_jobs}", file = log)
 
     if not dry_run:
-        print(f"  >> Final job id is: {job_id}", file = log)
+        print(f"  >> Final job id is: {sacct_job_id}", file = log)
 
     log.close()
+
+    return (sacct_job_id)
 
 
 ### main
@@ -303,7 +316,7 @@ if __name__ == "__main__":
     parser.add_argument("--dry_run", action = "store_true", help = "is this a test?")
     args = parser.parse_args()
 
-    main(
+    mutect2_pipeline(
         tool_config = args.tool_config, 
         data_config = args.data_config, 
         out_dir = args.out_dir,
