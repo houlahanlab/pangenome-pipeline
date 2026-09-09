@@ -3,11 +3,10 @@
 ## Description
 Align paired-end FASTQ files to a pangenome and perform somatic variant detection from tumour/normal paired samples.
 
-## Input files
-### Pipeline configuration
+## Pipeline configuration
 The pangenome-somatic pipeline requires a configuration file in YAML format. This YAML file provides paths to all input files (graph- and linear- reference files, target-regions, etc.), tool executables (to enable cross-system compatibility) and per-stage resource requirements.
 
-See [example_pipeline_config.yaml](../examples/example_pipeline_config.yaml) . This file contains example filepaths and resource requirements, determined from testing a run with 40 WXS BAMs from TCGA.
+See [example_pipeline_config.yaml](../examples/example_pipeline_config.yaml) . This file contains example filepaths and resource requirements, determined from testing a run with 40 WXS BAMs from TCGA using the GRCh38+HPRCv1.1 pangenome reference.
 
 ### Reference Files
 Download your desired pangenome reference [here](https://data.humanpangenome.org/alignments), including the .gbz, .dist and .min files.
@@ -28,9 +27,29 @@ Note the contig stem (ie, GRCh38#0#) as this can be supplied via the tool_config
 
 The 'reference' key in your tool_config.yaml refers to a linear reference with standard contig names (ie, chr1-22, X, Y), such as 'grch38_linear_fixed.fa' in the above example. This will be used for BQSR and variant calling steps.
 
+### Tool Executables
+All of the tools necessary to run the alignment and variant-calling steps (with Strelka or Mutect2) are conveniently packaged in the included Dockerfile, which has been built as an apptainer container for use on HPCs (and can be found [here](path/to/apptainer/image) ).
 
-### Sample Data
-The pangenome-somatic pipeline accepts either FASTQ files (paired-end only; 1 set per sample) in YAML format:
+If your compute environment enables apptainer usage, download the above container and set the executable within your [pipeline_config.yaml](../examples/example_pipeline_config.yaml) : 
+
+<pre><code># tool versions/executables
+container_path: 'apptainer exec pangenome-pipeline_v1.sif'
+</code></pre>
+
+If you would like to use alternate methods for each tool (ie, use locally-installed executables), you can likewise supply the individual commands:
+
+<pre><code># tool versions/executables
+vg_path: 'apptainer exec vg_v1.61.0.sif vg' # or just 'vg' if in your $PATH
+gatk_path: 'module load gatk/4.3.0.0; gatk'
+samtools_path: 'apptainer exec pangenome-pipeline_v1.sif samtools' # or just 'samtools' if in your $PATH
+bcftools_path: 'apptainer exec pangenome-pipeline_v1.sif bcftools' # or just 'bcftools' if in your $PATH
+bgzip_path: 'bgzip'
+tabix_path: 'tabix'
+strelka_path: 'apptainer exec strelka_2.9.10.sif'
+</code></pre>
+
+## Sample Data
+The pangenome-somatic pipeline accepts data files in YAML format. For alignment, this should be a YAML file with paths to FASTQ files (paired-end only; 1 set per sample):
 
 <pre><code>---
 TCGA-FD-A3B5:
@@ -55,6 +74,20 @@ TCGA-FD-A3B5:
 </code></pre>
 
 See [example_fastq_config.yaml](../examples/example_fastq_config.yaml) for an extended example.
+
+For variant-calling, this should be a YAML file with paths to preprocessed BAM files:
+<pre><code>---
+TCGA-FD-A3B5:
+    normal:
+        TCGA-FD-A3B5-10A: /path/to/TCGA-FD-A3B5-10A_aligned_processed.bam
+    tumour:
+        TCGA-FD-A3B5-01A: /path/to/TCGA-FD-A3B5-01A_aligned_processed.bam
+TCGA-CF-A1HS:
+    normal:
+        TCGA-CF-A1HS-10A: /path/to/TCGA-CF-A1HS-10A_aligned_processed.bam
+    tumour:
+        TCGA-CF-A1HS-01A: /path/to/TCGA-CF-A1HS-01A_aligned_processed.bam
+</code></pre>
 
 ## Workflow
 The pangenome-somatic pipeline can be run using a single command, using the completed tool configuration YAML to determine all necessary steps/parameters:
