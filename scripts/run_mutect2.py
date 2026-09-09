@@ -57,7 +57,7 @@ def run_mutect2(gatk:str, reference:str, tumour:str, vcf:str, normal:str, normal
     return final_command
 
 
-def run_filter_vcf(gatk:str, conda_path:str, reference:str, vcf:str, filtered_vcf:str, java_mem:str, tmp_dir:str) -> str:
+def run_filter_vcf(gatk:str, bcftools:str, tabix:str, reference:str, vcf:str, filtered_vcf:str, java_mem:str, tmp_dir:str) -> str:
     """Filter raw Mutect2 variant calls."""
 
     tmp_vcf = vcf.replace('raw','variants')
@@ -74,12 +74,8 @@ def run_filter_vcf(gatk:str, conda_path:str, reference:str, vcf:str, filtered_vc
 
     tool_comment2 = "# filter variants to only PASS"
     tool_command2 = [
-        f'eval "$({conda_path} shell.bash hook)"',
-        f"conda activate samtools_env",
-        f"bcftools view -f PASS {tmp_vcf} > {filtered_vcf}",
-        f"bgzip {filtered_vcf}",
-        f"tabix -p vcf {filtered_vcf}.gz",
-        "conda deactivate"
+        f"{bcftools} view -f PASS -Oz -o {filtered_vcf} {tmp_vcf}",
+        f"{tabix} {filtered_vcf}"
     ]
 
     final_command = tool_comment1 + "\n" + " ".join(map(str, tool_command1))
@@ -116,7 +112,17 @@ def mutect2_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
         print("  >> trial mode selected (--dry_run); jobs will not be submitted", file = log)
 
     # extract tool paths from config
-    gatk_executable = tool_data['gatk_path']
+    bcftools_executable, gatk_executable, tabix_executable = None, None, None
+
+    if tool_data['container_path']:
+        bcftools_executable = tool_data['container_path']
+        gatk_executable = tool_data['container_path']
+        tabix_executable = tool_data['container_path']
+    else:
+        bcftools_executable = tool_data['bcftools_path']
+        gatk_executable = tool_data['gatk_path']
+        tabix_executable = tool_data['tabix_path']
+
     java_mem = get_java_mem(tool_data['mutect2']['mem'])
 
     # extract reference files from config
@@ -189,7 +195,7 @@ def mutect2_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
 
             # indicate output files
             mutect2_vcf = os.path.join(smp_directory, f"{sample}_Mutect2_raw.vcf.gz")
-            filtered_vcf = os.path.join(smp_directory, f"{sample}_Mutect2_pass_variants.vcf")
+            filtered_vcf = os.path.join(smp_directory, f"{sample}_Mutect2_pass_variants.vcf.gz")
 
             ## Step 1: Mutect2
             mutect2_command, filter_command = None, None
@@ -218,7 +224,8 @@ def mutect2_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
             if is_file_missing_or_empty(filtered_vcf):
                 filter_command = run_filter_vcf(
                     gatk = gatk_executable,
-                    conda_path = tool_data['conda_path'],
+                    bcftools = bcftools_executable,
+                    tabix = tabix_executable,
                     reference = reference,
                     vcf = mutect2_vcf, 
                     filtered_vcf = filtered_vcf,
@@ -231,7 +238,7 @@ def mutect2_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
             # write slurm script and sbatch (unless dry-run)
             print(f"      Submitting job for Mutect2...", file = log)
 
-            if len(call_commands) > 0 and is_file_missing_or_empty(f"{filtered_vcf}.gz"):
+            if len(call_commands) > 0 and is_file_missing_or_empty(filtered_vcf):
 
                 m2_job_id, m2_script = write_script(
                     args,
@@ -250,7 +257,7 @@ def mutect2_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
             else:
                 print(f"       >> Mutect2 step already completed; no jobs to submit.", file = log)
 
-            final_files.append(f"{filtered_vcf}.gz")
+            final_files.append(filtered_vcf)
 
         # do cleanup once per donor
         if remove:

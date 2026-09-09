@@ -25,48 +25,39 @@ def run_somaticsniper(somsnip_executable:str, reference:str, tumour:str, normal:
     return final_command
 
 
-def run_sniper_filters(conda_path:str, somsnip_executable:str, rc_executable:str, reference:str, tumour:str, vcf:str, stem:str, targets:str) -> str:
+def run_sniper_filters(somsnip_executable:str, rc_executable:str, samtools:str, bcftools:str, bgzip:str, tabix:str, reference:str, tumour:str, vcf:str, stem:str, targets:str) -> str:
     """Apply variant filters."""
 
     script_path = f"{somsnip_executable}/src/scripts"
     hc_vcf = f"{stem}_SomaticSniper_hc.vcf"
-    out_vcf = f"{stem}_SomaticSniper_hc_filtered.vcf"
+    out_vcf = f"{stem}_SomaticSniper_hc_filtered.vcf.gz"
 
     these_regions = ""
     if targets:
         these_regions = f"-R {targets}"
 
-    tool_comment1 = "# activate conda"
+    tool_comment1 = "# apply somaticsniper filters"
     tool_command1 = [
-        f'eval "$({conda_path} shell.bash hook)"',
-        f"conda activate samtools_env"
-    ]
-
-    tool_comment2 = "# apply somaticsniper filters"
-    tool_command2 = [
-        f"samtools calmd -b {tumour} {reference} > {stem}_NM.bam",
-        f"samtools index {stem}_NM.bam",
-        f"samtools mpileup -f {reference} {stem}_NM.bam > {stem}.pileup",
+        f"{samtools} calmd -b {tumour} {reference} > {stem}_NM.bam",
+        f"{samtools} index {stem}_NM.bam",
+        f"{samtools} mpileup -f {reference} {stem}_NM.bam > {stem}.pileup",
         f"perl {script_path}/snpfilter.pl --snp-file {vcf} --indel-file {stem}.pileup --out-file {stem}.SNPfilter",
         f"perl {script_path}/prepare_for_readcount.pl --snp-file {stem}.SNPfilter --out-file {stem}.SNPfilter.pos",
         f"{rc_executable} bam-readcount -w 1 -b 15 -f {reference} -l {stem}.SNPfilter.pos {stem}_NM.bam > {stem}.readcounts",
         f"perl {script_path}/fpfilter.pl --snp-file {stem}.SNPfilter --readcount-file {stem}.readcounts",
         f"perl {script_path}/highconfidence.pl --snp-file {stem}.SNPfilter.fp_pass --out-file {hc_vcf}",
-        f"bgzip {hc_vcf}",
-        f"tabix -p vcf {hc_vcf}.gz"
+        f"{bgzip} {hc_vcf}",
+        f"{tabix} -p vcf {hc_vcf}.gz"
     ]
 
-    tool_comment3 = "# filter variants by depth and capture regions (if provided)"
-    tool_command3 = [
-        f"bcftools view -e 'FMT/DP < 5' {these_regions} {hc_vcf}.gz > {out_vcf}",
-        f"bgzip {out_vcf}",
-        f"tabix -p vcf {out_vcf}.gz",
-        "conda deactivate"
+    tool_comment2 = "# filter variants by depth and capture regions (if provided)"
+    tool_command2 = [
+        f"{bcftools} view -e 'FMT/DP < 5' {these_regions} -Oz -o {out_vcf} {hc_vcf}.gz",
+        f"{tabix} -p vcf {out_vcf}"
     ]
 
     final_command = tool_comment1 + "\n" + "\n".join(map(str, tool_command1))
     final_command += "\n" + tool_comment2 + "\n" + "\n".join(map(str, tool_command2))
-    final_command += "\n" + tool_comment3 + "\n" + "\n".join(map(str, tool_command3))
     return final_command
 
 
@@ -101,6 +92,23 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
     # extract tool paths from config
     somaticsniper_executable = tool_data['somaticsniper_path']
     readcount_executable = tool_data['readcount_path']
+
+    # extract tool paths from config
+    somaticsniper_executable = tool_data['somaticsniper_path']
+    readcount_executable = tool_data['readcount_path']
+
+    samtools_executable, bcftools_executable, bgzip_executable, tabix_executable = None, None, None, None
+
+    if tool_data['container_path']:
+        samtools_executable = tool_data['container_path']
+        bcftools_executable = tool_data['container_path']
+        bgzip_executable = tool_data['container_path']
+        tabix_executable = tool_data['container_path']
+    else:
+        samtools_executable = tool_data['samtools_path']
+        bcftools_executable = tool_data['bcftools_path']
+        bgzip_executable = tool_data['bgzip_path']
+        tabix_executable = tool_data['tabix_path']
 
     # extract reference files from config
     reference = tool_data['reference']
@@ -194,7 +202,10 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
                 filter_command = run_sniper_filters(
                     somsnip_executable = somaticsniper_executable,
                     rc_executable = readcount_executable,
-                    conda_path = tool_data['conda_path'],
+                    samtools = samtools_executable,
+                    bcftools = bcftools_executable,
+                    bgzip = bgzip_executable,
+                    tabix = tabix_executable,
                     reference = reference,
                     targets = tool_data['target_regions'],
                     tumour = tumour_bam,

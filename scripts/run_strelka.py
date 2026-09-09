@@ -44,17 +44,13 @@ def run_strelka(strelka_executable:str, reference:str, targets:str, tumour:str, 
     return final_command
 
 
-def run_filter_vcf(conda_path:str, vcf:str, filtered_vcf:str) -> str:
+def run_filter_vcf(bcftools:str, tabix:str, vcf:str, filtered_vcf:str) -> str:
     """Filter raw Strelka variant calls."""
 
     tool_comment = "# filter variants to only PASS"
     tool_command = [
-        f'eval "$({conda_path} shell.bash hook)"',
-        f"conda activate samtools_env",
-        f"bcftools view -f PASS {vcf} > {filtered_vcf}",
-        f"bgzip {filtered_vcf}",
-        f"tabix -p vcf {filtered_vcf}.gz",
-        "conda deactivate"
+        f"{bcftools} view -f PASS -Oz -o {filtered_vcf} {vcf}",
+        f"{tabix} {filtered_vcf}",
     ]
 
     final_command = tool_comment + "\n" + "\n".join(map(str, tool_command))
@@ -90,7 +86,16 @@ def strelka_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
         print("  >> trial mode selected (--dry_run); jobs will not be submitted", file = log)
 
     # extract tool paths from config
-    strelka_executable = tool_data['strelka_path']
+    bcftools_executable, strelka_executable, tabix_executable = None, None, None
+
+    if tool_data['container_path']:
+        bcftools_executable = tool_data['container_path']
+        strelka_executable = tool_data['container_path']
+        tabix_executable = tool_data['container_path']
+    else:
+        bcftools_executable = tool_data['bcftools_path']
+        strelka_executable = tool_data['strelka_path']
+        tabix_executable = tool_data['tabix_path']
 
     # extract reference files from config
     reference = tool_data['reference']
@@ -164,7 +169,7 @@ def strelka_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
 
             # indicate output files
             strelka_vcf = os.path.join(smp_directory, "results/variants/somatic.snvs.vcf.gz")
-            filtered_vcf = os.path.join(smp_directory, f"{sample}_Strelka_pass_variants.vcf")
+            filtered_vcf = os.path.join(smp_directory, f"{sample}_Strelka_pass_variants.vcf.gz")
 
             ## Step 1: Strelka
             strelka_command, filter_command = None, None
@@ -185,7 +190,8 @@ def strelka_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
             # filter variant calls
             if is_file_missing_or_empty(filtered_vcf):
                 filter_command = run_filter_vcf(
-                    conda_path = tool_data['conda_path'],
+                    bcftools = bcftools_executable,
+                    tabix = tabix_executable,
                     vcf = strelka_vcf, 
                     filtered_vcf = filtered_vcf
                 )

@@ -44,17 +44,13 @@ def run_deepsomatic(tool:str, model:str, reference:str, tumour:str, tumour_id:st
     return final_command
 
 
-def run_filter_vcf(conda_path:str, vcf:str, filtered_vcf:str) -> str:
+def run_filter_vcf(bcftools:str, tabix:str, vcf:str, filtered_vcf:str) -> str:
     """Filter raw DeepSomatic variant calls."""
 
     tool_comment = "# filter variants to only PASS"
     tool_command = [
-        f'eval "$({conda_path} shell.bash hook)"',
-        f"conda activate samtools_env",
-        f"bcftools view -f PASS {vcf} > {filtered_vcf}",
-        f"bgzip {filtered_vcf}",
-        f"tabix -p vcf {filtered_vcf}.gz",
-        "conda deactivate"
+        f"{bcftools} view -f PASS -Oz -o {filtered_vcf} {vcf}",
+        f"{tabix} {filtered_vcf}"
     ]
 
     final_command = tool_comment + "\n" + "\n".join(map(str, tool_command))
@@ -91,6 +87,15 @@ def deepsomatic_pipeline(tool_config:str, data_config:str, out_dir:str, remove:b
 
     # extract tool paths from config
     deepsomatic_executable = tool_data['deepsomatic_path']
+
+    bcftools_executable, tabix_executable = None, None
+
+    if tool_data['container_path']:
+        bcftools_executable = tool_data['container_path']
+        tabix_executable = tool_data['container_path']
+    else:
+        bcftools_executable = tool_data['bcftools_path']
+        tabix_executable = tool_data['tabix_path']
 
     # extract reference files from config
     reference = tool_data['reference']
@@ -158,7 +163,7 @@ def deepsomatic_pipeline(tool_config:str, data_config:str, out_dir:str, remove:b
 
             # indicate output files
             deepsomatic_vcf = os.path.join(smp_directory, f"{sample}_DeepSomatic_raw.vcf.gz")
-            filtered_vcf = os.path.join(smp_directory, f"{sample}_DeepSomatic_pass_variants.vcf")
+            filtered_vcf = os.path.join(smp_directory, f"{sample}_DeepSomatic_pass_variants.vcf.gz")
 
             ## Step 1: DeepSomatic
             deepsomatic_command, filter_command = None, None
@@ -186,7 +191,8 @@ def deepsomatic_pipeline(tool_config:str, data_config:str, out_dir:str, remove:b
             # filter variant calls
             if is_file_missing_or_empty(filtered_vcf):
                 filter_command = run_filter_vcf(
-                    conda_path = tool_data['conda_path'],
+                    bcftools = bcftools_executable,
+                    tabix = tabix_executable,
                     vcf = deepsomatic_vcf, 
                     filtered_vcf = filtered_vcf
                 )

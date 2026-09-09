@@ -66,7 +66,7 @@ def run_vg_stats(vg:str, gam:str, stats:str) -> str:
     return final_command
 
 
-def run_surject(vg:str, reference:str, gam:str, bam:str, ref_paths:str, pattern:str = None) -> str:
+def run_surject(vg:str, samtools:str, reference:str, gam:str, bam:str, ref_paths:str, pattern:str = None) -> str:
     """Surject graph-based alignments to linear alignments (gam to bam)."""
 
     reheader = ''
@@ -263,8 +263,17 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
         print("  >> trial mode selected (--dry_run); jobs will not be submitted", file = log)
 
     # extract tool paths from config
-    vg_executable = tool_data['vg_path']
-    gatk_executable = tool_data['gatk_path']
+    vg_executable, samtools_executable, gatk_executable = None, None, None
+
+    if tool_data['container_path']:
+        vg_executable = tool_data['container_path']
+        samtools_executable = tool_data['container_path']
+        gatk_executable = tool_data['container_path']
+    else:
+        vg_executable = tool_data['vg_path']
+        samtools_executable = tool_data['samtools_path']
+        gatk_executable = tool_data['gatk_path']
+
     java_mem = get_java_mem(tool_data['gatk']['mem'])
 
     # extract reference files from config
@@ -390,6 +399,7 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
             if is_file_missing_or_empty(surject_bam):
                 surject_command = run_surject(
                     vg = vg_executable,
+                    samtools = samtools_executable,
                     reference = gbz_file,
                     gam = output_gam,
                     ref_paths = tool_data['ref_paths'],
