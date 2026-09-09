@@ -87,7 +87,7 @@ def run_filter_vcf(gatk:str, conda_path:str, reference:str, vcf:str, filtered_vc
     return final_command
 
 
-def mutect2_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry_run:bool = False) -> str:
+def mutect2_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry_run:bool = False, wait_for:bool = False) -> str:
 
    # load tool/paramter information
     with open(tool_config, 'r') as file:
@@ -133,6 +133,11 @@ def mutect2_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
     n_patients = len(sample_data.keys())
 
     print(f"\n----------\nProcessing {n_patients} patients...", file = log)
+
+    # is this pipeline waiting for any prior jobs?
+    prior_jobs = []
+    if wait_for:
+        prior_jobs = wait_for.split(",")
 
     # initiate object to hold job_ids
     all_jobs = []
@@ -232,6 +237,7 @@ def mutect2_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
                     args,
                     job_name = f"run_mutect2_{sample}",
                     command = call_commands,
+                    depends = prior_jobs,
                     job_parameters = tool_data['mutect2']
                 )
 
@@ -314,6 +320,7 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--out_dir", help = "path to output directory")
     parser.add_argument("--remove", action = "store_true", help = "should intermediates be removed?")
     parser.add_argument("--dry_run", action = "store_true", help = "is this a test?")
+    parser.add_argument("--wait_for", help = "prior job ids (as a comma-separated list) that this function is dependent on")
     args = parser.parse_args()
 
     mutect2_pipeline(
@@ -321,5 +328,6 @@ if __name__ == "__main__":
         data_config = args.data_config, 
         out_dir = args.out_dir,
         remove = args.remove, 
-        dry_run = args.dry_run
+        dry_run = args.dry_run,
+        wait_for = args.wait_for
     )
