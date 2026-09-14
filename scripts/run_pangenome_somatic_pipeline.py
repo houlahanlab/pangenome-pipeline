@@ -1,7 +1,6 @@
 """This pipeline will submit jobs for the Pangenome:Somatic pipeline."""
 
 import os
-import sys
 import yaml
 import argparse
 
@@ -70,9 +69,9 @@ def main(tool_config:str, data_config:str, out_dir:str, run_alignment:bool = Fal
 
     if run_alignment:
 
-    	print("\n  Submitting alignment pipeline...", file = log)
+        print("\n  Submitting alignment pipeline...", file = log)
 
-    	# run alignment pipeline
+        # run alignment pipeline
         bam_output = os.path.join(alignment_directory, 'processed_bams.yaml')
         print(f"\n    Using FASTQs in {data_config}", file = log)
         print(f"\n    Output directory: {alignment_directory}", file = log)
@@ -90,7 +89,7 @@ def main(tool_config:str, data_config:str, out_dir:str, run_alignment:bool = Fal
         all_jobs.append(alignment_job_id)
 
     else:
-    	print("\n  Alignment step not selected; will assume {data_config} lists BAMs instead of FASTQs...", file = log)
+        print(f"\n  Alignment step not selected; will assume {data_config} lists BAMs instead of FASTQs...", file = log)
         bam_output = data_config
 
     print("\n----------\n", file = log)
@@ -100,9 +99,9 @@ def main(tool_config:str, data_config:str, out_dir:str, run_alignment:bool = Fal
 
     if run_mutect2:
 
-    	print("\n  Submitting Mutect2 pipeline...", file = log)
+        print("\n  Submitting Mutect2 pipeline...", file = log)
 
-    	# run mutect2 pipeline
+        # run mutect2 pipeline
         print(f"\n    Using BAMs in {bam_output}", file = log)
         print(f"\n    Output directory: {mutect2_directory}", file = log)
 
@@ -119,9 +118,9 @@ def main(tool_config:str, data_config:str, out_dir:str, run_alignment:bool = Fal
 
     if run_strelka:
 
-    	print("\n  Submitting Strelka pipeline...", file = log)
+        print("\n  Submitting Strelka pipeline...", file = log)
 
-    	# run strelka pipeline
+        # run strelka pipeline
         print(f"\n    Using BAMs in {bam_output}", file = log)
         print(f"\n    Output directory: {strelka_directory}", file = log)
 
@@ -138,16 +137,16 @@ def main(tool_config:str, data_config:str, out_dir:str, run_alignment:bool = Fal
 
     if run_somaticsniper:
 
-    	print("\n  Submitting SomaticSniper pipeline...", file = log)
+        print("\n  Submitting SomaticSniper pipeline...", file = log)
 
-    	# run somaticsniper pipeline
+        # run somaticsniper pipeline
         print(f"\n    Using BAMs in {bam_output}", file = log)
-        print(f"\n    Output directory: {somaticsniper_directory}", file = log)
+        print(f"\n    Output directory: {somsnip_directory}", file = log)
 
         somaticsniper_job_id = somaticsniper_pipeline(
             tool_config = tool_config,
             data_config = data_config,
-            out_dir = somaticsniper_directory,
+            out_dir = somsnip_directory,
             wait_for = alignment_job_id,
             remove = remove,
             dry_run = dry_run
@@ -157,16 +156,16 @@ def main(tool_config:str, data_config:str, out_dir:str, run_alignment:bool = Fal
 
     if run_deepsomatic:
 
-    	print("\n  Submitting DeepSomatic pipeline...", file = log)
+        print("\n  Submitting DeepSomatic pipeline...", file = log)
 
-    	# run deepsomatic pipeline
+        # run deepsomatic pipeline
         print(f"\n    Using BAMs in {bam_output}", file = log)
-        print(f"\n    Output directory: {deepsomatic_directory}", file = log)
+        print(f"\n    Output directory: {deepsom_directory}", file = log)
 
         deepsomatic_job_id = deepsomatic_pipeline(
             tool_config = tool_config,
             data_config = data_config,
-            out_dir = deepsomatic_directory,
+            out_dir = deepsom_directory,
             wait_for = alignment_job_id,
             remove = remove,
             dry_run = dry_run
@@ -175,7 +174,7 @@ def main(tool_config:str, data_config:str, out_dir:str, run_alignment:bool = Fal
         all_jobs.append(deepsomatic_job_id)
    
     if not dry_run:
-	final_job_ids = ",".join(map(str, all_jobs))
+        final_job_ids = ",".join(map(str, all_jobs))
         print(f"  >> Final job id(s): {final_job_ids}", file = log)
 
     log.close()
@@ -202,11 +201,11 @@ if __name__ == "__main__":
         tool_config = args.tool_config,
         data_config = args.data_config,
         out_dir = args.out_dir,
-	run_alignment = args.alignment,
-	run_mutect2 = args.mutect2,
-	run_strelka = args.strelka,
-	run_somaticsniper = args.somaticsniper,
-	run_deepsomatic = args.deepsomatic,
+        run_alignment = args.alignment,
+        run_mutect2 = args.mutect2,
+        run_strelka = args.strelka,
+        run_somaticsniper = args.somaticsniper,
+        run_deepsomatic = args.deepsomatic,
         remove = args.remove,
         dry_run = args.dry_run
     )
