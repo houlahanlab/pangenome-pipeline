@@ -535,7 +535,7 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
             # write slurm script and sbatch (unless dry-run)
             print(f"    Submitting job for QC step...", file = log)
 
-            if qc_commands is not None:
+            if len(qc_commands) > 0:
 
                 qc_job_id, qc_script = write_script(
                     args,
@@ -558,7 +558,10 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
         # use tumour/normal pileups to estimate contamination
         contamination_commands = []
 
-        tumour_samples = list(out_bams[donor]['tumour'].keys())
+        tumour_samples = None
+        if 'tumour' in out_bams[donor]:
+            tumour_samples = list(out_bams[donor]['tumour'].keys())
+
         for tumour in tumour_samples:
 
             tumour_pileup = os.path.join(patient_directory, tumour, f"{tumour}.pileup")
@@ -635,7 +638,7 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
                     print(f"    >> job id is {clean_job_id}", file = log)
 
             else:
-                subprocess.run(f"rm -rf {tmp_directory}")
+                subprocess.run(["rm","-rf", tmp_directory])
 
         all_jobs += patient_jobs
 
