@@ -1,28 +1,35 @@
 ---
-project_name: GRCh38_linear
+project_name: TEST
+project_directory: /path/to/project/directory
 
 # reference files
-ref_gbz: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch38_no_alts/GRCh38.d1.vd1_vg.gbz
-ref_dist: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch38_no_alts/GRCh38.d1.vd1_vg.dist
-ref_min: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch38_no_alts/GRCh38.d1.vd1_vg.min
-ref_paths: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/VG-Index-Files/grch38_alts/GRCh38_primary_contigs.txt
-ref_pattern: # the stem added to contig names in the graph (ie, "GRCh38#0#")
+ref_gbz: /path/to/reference/files/hprc_v1.1_grch38/hprc-v1.1-mc-grch38.d9.gbz
+ref_dist: /path/to/reference/files/hprc_v1.1_grch38/hprc-v1.1-mc-grch38.d9.dist
+ref_min: /path/to/reference/files/hprc_v1.1_grch38/hprc-v1.1-mc-grch38.d9.min
+ref_paths: /path/to/reference/files/hprc_v1.1_grch38/grch38_linear.dict
+ref_pattern: 'GRCh38#0#'
 
-reference: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Reference-Fasta-Files/GRCh38.d1.vd1.fa
-known_indels: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Known-Indel-Files/Homo_sapiens_assembly38.known_indels.vcf
-pon: /workspace/lab/houlahanlab/resources/germline_resource/1000g_pon.hg38.vcf.gz
-germline_resource: /workspace/lab/houlahanlab/resources/germline_resource/af-only-gnomad.hg38.vcf.gz
-target_regions: /workspace/lab/houlahanlab/resources/agilent_sureselect_exon/Agilent_SureSelect_All_Exon_V5.bed.gz
+reference: /path/to/reference/files/hprc_v1.1_grch38/grch38_linear_fixed.fa
+known_indels: /path/to/reference/files/Homo_sapiens_assembly38.known_indels.vcf
+pon: /path/to/reference/files/1000g_pon.hg38.vcf.gz
+germline_resource: /path/to/reference/files/af-only-gnomad.hg38.vcf.gz
+target_regions: /path/to/reference/files/Agilent_SureSelect_All_Exon_V5.bed.gz # or 'chr21'
 
 # tool versions
-conda_path: /workspace/lab/houlahanlab/software/micromamba/bin/conda
-vg_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/vg_v1.61.0.sif vg'
-gatk_path: 'gatk'
-strelka_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/strelka_2.9.10--h9ee0642_1.sif'
+container_path: 'apptainer exec pangenome-pipeline_v1.sif'
 
-somaticsniper_path: '/workspace/lab/houlahanlab/software/somatic-sniper'
-readcount_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/bam-readcount_1.0.1.sif'
-deepsomatic_path: 'apptainer exec /workspace/lab/houlahanlab/software/DeepSomatic/deepsomatic_1.10.0.sif'
+vg_path: 'apptainer exec pangenome-pipeline_v1.sif vg' # or just 'vg' if in your PATH
+gatk_path: 'apptainer exec pangenome-pipeline_v1.sif gatk' # or just 'gatk' if in your PATH
+samtools_path: 'apptainer exec pangenome-pipeline_v1.sif samtools' # or just 'samtools' if in your PATH
+bcftools_path: 'apptainer exec pangenome-pipeline_v1.sif bcftools' # or just 'bcftools' if in your PATH
+bgzip_path: 'apptainer exec pangenome-pipeline_v1.sif bgzip' # or just 'bgzip' if in your PATH
+tabix_path: 'apptainer exec pangenome-pipeline_v1.sif tabix' # or just 'tabix' if in your PATH
+
+strelka_path: 'apptainer exec pangenome-pipeline_v1.sif'
+
+somaticsniper_path: '/path/to/software/somatic-sniper'
+readcount_path: 'apptainer exec /path/to/software/bam-readcount_1.0.1.sif'
+deepsomatic_path: 'apptainer exec /path/to/software/deepsomatic_1.10.0.sif'
 
 # parameters
 giraffe:
@@ -34,7 +41,7 @@ gatk:
   mem: '8G'
   cpus: 2
 strelka:
-  ref: /workspace/lab/houlahanlab/resources/GRCh38_Indexes/Reference-Fasta-Files/GRCh38.d1.vd1_primary_only.fa
+  ref: /path/to/reference/files/hprc_v1.1_grch38/grch38_linear_fixed.fa
   time: '4:0:0'
   mem: '12G'
   cpus: 1
