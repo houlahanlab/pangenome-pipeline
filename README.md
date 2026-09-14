@@ -21,7 +21,6 @@ The pangenome-pipeline was developed using python and is currently compatible us
 Required tools/packages (these should all be available in the shared lab environment):
 - python3
 - python packages: os, subprocess, yaml, argparse, datetime, simple_slurm
-- conda environment for samtools (including bcftools, bgzip, tabix)
 - VG, GATK (>= v4), Strelka, SomaticSniper (with bam-readcount), DeepSomatic
 
 ## Example
