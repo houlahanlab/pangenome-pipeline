@@ -99,7 +99,7 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
 
     samtools_executable, bcftools_executable, bgzip_executable, tabix_executable = None, None, None, None
 
-    if tool_data['container_path']:
+    if 'container_path' in tool_data:
         samtools_executable = tool_data['container_path']
         bcftools_executable = tool_data['container_path']
         bgzip_executable = tool_data['container_path']
@@ -275,6 +275,8 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
         all_jobs += patient_jobs
 
     # write slurm script and sbatch (unless dry-run)
+    sacct_job_id, sacct_script = None, None
+    
     if not dry_run:
         sacct_out = f"{out_dir}/logs/slurm_job_metrics_{current_run}.out"
         sacct_command = collect_job_stats(all_jobs, sacct_out)

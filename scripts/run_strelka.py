@@ -88,7 +88,7 @@ def strelka_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
     # extract tool paths from config
     bcftools_executable, strelka_executable, tabix_executable = None, None, None
 
-    if tool_data['container_path']:
+    if 'container_path' in tool_data:
         bcftools_executable = tool_data['container_path']
         strelka_executable = tool_data['container_path']
         tabix_executable = tool_data['container_path']
