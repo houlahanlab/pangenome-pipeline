@@ -327,28 +327,6 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
 
             print(f"\n  Processing {sample}", file = log)
 
-            for library in (sample_data[donor][sample]['libraries'].keys()):
-            
-                for lane in (sample_data[donor][sample]['libraries'][library]['runlanes'].keys()):
-
-                    # TO DO: build in command to concatenate fastqs if multiple lanes/libraries are present
-                    #
-                    #
-
-                    fastq_files = [
-                        sample_data[donor][sample]['libraries'][library]['runlanes'][lane]['fastq']['R1'],
-                        sample_data[donor][sample]['libraries'][library]['runlanes'][lane]['fastq']['R2']
-                    ]
-
-            # process all fastqs for each sample
-            if not dry_run:
-                if not os.path.exists(fastq_files[0]):
-                    print(f"<<Error: FASTQ file {fastq_files[0]} not found. Skipping {sample}...>>", file = log)
-                    continue
-                if not os.path.exists(fastq_files[1]):
-                    print(f"<<Error: FASTQ file {fastq_files[1]} not found. Skipping {sample}...>>", file = log)
-                    continue
-
             # indicate output files
             output_gam = os.path.join(smp_directory, f"{sample}_vg_aligned.gam")
             stats_gam = os.path.join(smp_directory, f"{sample}_vg_aligned_stats.txt")
@@ -369,132 +347,160 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
             cleanup_files.append(recal_table)
             cleanup_files.append(bam_pileup)
 
-            # initiate per-sample job IDs
-            align_job_id, bqsr_job_id, qc_job_id = None, None, None
-
-            ## Step 1: VG giraffe + surject
-            giraffe_command, stats_command, surject_command = None, None, None 
-
-            # run alignment
-            if is_file_missing_or_empty(output_gam):
-                giraffe_command = run_giraffe(
-                    vg = vg_executable,
-                    reference = gbz_file,
-                    dist_file = dist_file,
-                    min_file = min_file,
-                    output = output_gam,
-                    r1 = fastq_files[0],
-                    r2 = fastq_files[1]
-                )
-
-            # collect alignment stats
-            if is_file_missing_or_empty(stats_gam):
-                stats_command = run_vg_stats(
-                    vg = vg_executable,
-                    gam = output_gam,
-                    stats = stats_gam
-                )
-
-            # convert gam to bam
-            if is_file_missing_or_empty(surject_bam):
-                surject_command = run_surject(
-                    vg = vg_executable,
-                    samtools = samtools_executable,
-                    reference = gbz_file,
-                    gam = output_gam,
-                    ref_paths = tool_data['ref_paths'],
-                    bam = surject_bam,
-                    pattern = tool_data['ref_pattern']
-                )
-
-            align_commands = list(filter(None, [giraffe_command, stats_command, surject_command]))
-
-            # write slurm script and sbatch (unless dry-run)
-            print(f"    Submitting job for alignment step...", file = log)
-
-            if len(align_commands) > 0 and is_file_missing_or_empty(recal_bam):        
-
-                align_job_id, align_script = write_script(
-                    args,
-                    job_name = f"run_alignment_{sample}",
-                    command = align_commands,
-                    job_parameters = tool_data['giraffe']
-                )
-
-                patient_jobs.append(align_job_id)
-
-                print(f"      >> sbatch {align_script}", file = log)
-                if not dry_run:
-                    print(f"      >> job id is {align_job_id}", file = log)
+            # first, check to see if this sample has already been run
+            if not is_file_missing_or_empty(recal_bam):
+                print(f"    Final recalibrated BAM already exists; skipping alignment steps.", file = log)
 
             else:
-                print(f"      >> Alignment step already completed; no jobs to submit.", file = log)
+                # find fastq files
+                for library in (sample_data[donor][sample]['libraries'].keys()):
+                
+                    for lane in (sample_data[donor][sample]['libraries'][library]['runlanes'].keys()):
+
+                        # TO DO: build in command to concatenate fastqs if multiple lanes/libraries are present
+                        #
+                        #
+
+                        fastq_files = [
+                            sample_data[donor][sample]['libraries'][library]['runlanes'][lane]['fastq']['R1'],
+                            sample_data[donor][sample]['libraries'][library]['runlanes'][lane]['fastq']['R2']
+                        ]
+
+                # process all fastqs for each sample
+                if not dry_run and is_file_missing_or_empty(recal_bam):
+                    if not os.path.exists(fastq_files[0]):
+                        print(f"<<Error: FASTQ file {fastq_files[0]} not found. Skipping {sample}...>>", file = log)
+                        continue
+                    if not os.path.exists(fastq_files[1]):
+                        print(f"<<Error: FASTQ file {fastq_files[1]} not found. Skipping {sample}...>>", file = log)
+                        continue
+
+                # initiate per-sample job IDs
+                align_job_id, bqsr_job_id, qc_job_id = None, None, None
+
+                ## Step 1: VG giraffe + surject
+                giraffe_command, stats_command, surject_command = None, None, None 
+
+                # run alignment
+                if is_file_missing_or_empty(output_gam):
+                    giraffe_command = run_giraffe(
+                        vg = vg_executable,
+                        reference = gbz_file,
+                        dist_file = dist_file,
+                        min_file = min_file,
+                        output = output_gam,
+                        r1 = fastq_files[0],
+                        r2 = fastq_files[1]
+                    )
+
+                # collect alignment stats
+                if is_file_missing_or_empty(stats_gam):
+                    stats_command = run_vg_stats(
+                        vg = vg_executable,
+                        gam = output_gam,
+                        stats = stats_gam
+                    )
+
+                # convert gam to bam
+                if is_file_missing_or_empty(surject_bam):
+                    surject_command = run_surject(
+                        vg = vg_executable,
+                        samtools = samtools_executable,
+                        reference = gbz_file,
+                        gam = output_gam,
+                        ref_paths = tool_data['ref_paths'],
+                        bam = surject_bam,
+                        pattern = tool_data['ref_pattern']
+                    )
+
+                align_commands = list(filter(None, [giraffe_command, stats_command, surject_command]))
+
+                # write slurm script and sbatch (unless dry-run)
+                print(f"    Submitting job for alignment step...", file = log)
+
+                if len(align_commands) > 0 and is_file_missing_or_empty(recal_bam):        
+
+                    align_job_id, align_script = write_script(
+                        args,
+                        job_name = f"run_alignment_{sample}",
+                        command = align_commands,
+                        job_parameters = tool_data['giraffe']
+                    )
+
+                    patient_jobs.append(align_job_id)
+
+                    print(f"      >> sbatch {align_script}", file = log)
+                    if not dry_run:
+                        print(f"      >> job id is {align_job_id}", file = log)
+
+                else:
+                    print(f"      >> Alignment step already completed; no jobs to submit.", file = log)
 
 
-            ## Step 2: GATK markdups and recalibration
-            sort_command, markdup_command, bqsr_command = None, None, None
+                ## Step 2: GATK markdups and recalibration
+                sort_command, markdup_command, bqsr_command = None, None, None
 
-            # update readgroup info and sort bam
-            if is_file_missing_or_empty(sorted_bam):
-                sort_command = run_gatk_sort(
-                    gatk = gatk_executable,
-                    reference = reference,
-                    in_bam = surject_bam,
-                    out_bam = sorted_bam,
-                    tmp_dir = tmp_directory,
-                    lib = ";".join(sample_data[donor][sample]['libraries'].keys()),
-                    donor = donor,
-                    sample = sample,
-                    java_mem = java_mem
-                )
+                # update readgroup info and sort bam
+                if is_file_missing_or_empty(sorted_bam):
+                    sort_command = run_gatk_sort(
+                        gatk = gatk_executable,
+                        reference = reference,
+                        in_bam = surject_bam,
+                        out_bam = sorted_bam,
+                        tmp_dir = tmp_directory,
+                        lib = ";".join(sample_data[donor][sample]['libraries'].keys()),
+                        donor = donor,
+                        sample = sample,
+                        java_mem = java_mem
+                    )
 
-            # mark duplicates
-            if is_file_missing_or_empty(markdup_bam):
-                markdup_command = run_gatk_markdup(
-                    gatk = gatk_executable,
-                    in_bam = sorted_bam,
-                    out_bam = markdup_bam,
-                    metrics = markdup_stats,
-                    tmp_dir = tmp_directory,
-                    java_mem = java_mem
-                )
+                # mark duplicates
+                if is_file_missing_or_empty(markdup_bam):
+                    markdup_command = run_gatk_markdup(
+                        gatk = gatk_executable,
+                        in_bam = sorted_bam,
+                        out_bam = markdup_bam,
+                        metrics = markdup_stats,
+                        tmp_dir = tmp_directory,
+                        java_mem = java_mem
+                    )
 
-            # perform base-quality score recalibration
-            if is_file_missing_or_empty(recal_bam):
-                bqsr_command = run_gatk_bqsr(
-                    gatk = gatk_executable,
-                    reference = reference,
-                    in_bam = markdup_bam,
-                    out_table = recal_table,
-                    indels = tool_data['known_indels'],
-                    out_bam = recal_bam,
-                    tmp_dir = tmp_directory,
-                    java_mem = java_mem
-                )
+                # perform base-quality score recalibration
+                if is_file_missing_or_empty(recal_bam):
+                    bqsr_command = run_gatk_bqsr(
+                        gatk = gatk_executable,
+                        reference = reference,
+                        in_bam = markdup_bam,
+                        out_table = recal_table,
+                        indels = tool_data['known_indels'],
+                        out_bam = recal_bam,
+                        tmp_dir = tmp_directory,
+                        java_mem = java_mem
+                    )
 
-            gatk_commands = list(filter(None, [sort_command, markdup_command, bqsr_command]))
+                gatk_commands = list(filter(None, [sort_command, markdup_command, bqsr_command]))
 
-            # write slurm script and sbatch (unless dry-run)
-            print(f"    Submitting job for postprocessing step...", file = log)
+                # write slurm script and sbatch (unless dry-run)
+                print(f"    Submitting job for postprocessing step...", file = log)
 
-            if len(gatk_commands) > 0 and is_file_missing_or_empty(recal_bam):
+                if len(gatk_commands) > 0 and is_file_missing_or_empty(recal_bam):
 
-                bqsr_job_id, bqsr_script = write_script(
-                    args,
-                    job_name = f"run_postprocessing_{sample}",
-                    command = gatk_commands,
-                    job_parameters = tool_data['gatk'],
-                    depends = [align_job_id]
-                )
+                    bqsr_job_id, bqsr_script = write_script(
+                        args,
+                        job_name = f"run_postprocessing_{sample}",
+                        command = gatk_commands,
+                        job_parameters = tool_data['gatk'],
+                        depends = [align_job_id]
+                    )
 
-                patient_jobs.append(bqsr_job_id)
+                    patient_jobs.append(bqsr_job_id)
 
-                print(f"      >> sbatch {bqsr_script}", file = log)
-                if not dry_run:
-                    print(f"      >> job id is {bqsr_job_id}", file = log)
+                    print(f"      >> sbatch {bqsr_script}", file = log)
+                    if not dry_run:
+                        print(f"      >> job id is {bqsr_job_id}", file = log)
 
-            else:
-                print(f"      >> Postprocessing step already completed; no jobs to submit.", file = log)
+                else:
+                    print(f"      >> Postprocessing step already completed; no jobs to submit.", file = log)
 
             # add final BAM to yaml file
             if donor not in out_bams:
