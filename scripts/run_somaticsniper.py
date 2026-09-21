@@ -100,10 +100,10 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
     samtools_executable, bcftools_executable, bgzip_executable, tabix_executable = None, None, None, None
 
     if 'container_path' in tool_data:
-        samtools_executable = tool_data['container_path']
-        bcftools_executable = tool_data['container_path']
-        bgzip_executable = tool_data['container_path']
-        tabix_executable = tool_data['container_path']
+        samtools_executable = f"{tool_data['container_path']} samtools"
+        bcftools_executable = f"{tool_data['container_path']} bcftools"
+        bgzip_executable = f"{tool_data['container_path']} bgzip"
+        tabix_executable = f"{tool_data['container_path']} tabix"
     else:
         samtools_executable = tool_data['samtools_path']
         bcftools_executable = tool_data['bcftools_path']
@@ -175,11 +175,11 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
             os.makedirs(smp_directory, exist_ok=True)
 
             # indicate output files
-            somaticsniper_vcf = f"{sample}_somaticsniper_variants.vcf"
+            somaticsniper_vcf = os.path.join(smp_directory, f"{sample}_somaticsniper_variants.vcf")
             nm_bam = f"{sample}_NM.bam"
             tumour_pileup = f"{sample}.pileup"
             tumour_readcounts = f"{sample}.readcounts"
-            filtered_vcf = f"{sample}_SomaticSniper_hc_filtered.vcf.gz"
+            filtered_vcf = os.path.join(smp_directory, f"{sample}_SomaticSniper_hc_filtered.vcf.gz")
 
             ## Step 1: SomaticSniper
             cd_command = f"# move to working directory\ncd {smp_directory}"
@@ -192,7 +192,7 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
                     reference = reference,
                     tumour = tumour_bam, 
                     normal = normal_bam, 
-                    vcf = somaticsniper_vcf
+                    vcf = os.path.basename(somaticsniper_vcf)
                 )
 
             cleanup_files.append(f"{smp_directory}/{somaticsniper_vcf}")
@@ -209,7 +209,7 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
                     reference = reference,
                     targets = tool_data['target_regions'],
                     tumour = tumour_bam,
-                    vcf = somaticsniper_vcf,
+                    vcf = os.path.basename(somaticsniper_vcf),
                     stem = sample
                 )
             
@@ -243,12 +243,12 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
             else:
                 print(f"      >> SomaticSniper step already completed; no jobs to submit.", file = log)
 
-            final_files.append(f"{smp_directory}/{filtered_vcf}")
+            final_files.append(filtered_vcf)
 
         # do cleanup once per donor
         if remove:
             cleanup_command = "# check for final VCF(s), then cleanup intermediates"
-            cleanup_command += f"if [[ -s " + " && -s ".join(final_files) + " ]]; then\n"
+            cleanup_command += f"\nif [[ -s " + " && -s ".join(final_files) + " ]]; then"
             cleanup_command += "\n  rm " + "\n  rm ".join(cleanup_files)
             cleanup_command += "\nelse"
             cleanup_command += "\n  echo 'Final output VCF(s) is missing; not removing intermediate files!'"

@@ -91,8 +91,8 @@ def deepsomatic_pipeline(tool_config:str, data_config:str, out_dir:str, remove:b
     bcftools_executable, tabix_executable = None, None
 
     if 'container_path' in tool_data:
-        bcftools_executable = tool_data['container_path']
-        tabix_executable = tool_data['container_path']
+        bcftools_executable = f"{tool_data['container_path']} bcftools"
+        tabix_executable = f"{tool_data['container_path']} tabix"
     else:
         bcftools_executable = tool_data['bcftools_path']
         tabix_executable = tool_data['tabix_path']
@@ -202,7 +202,7 @@ def deepsomatic_pipeline(tool_config:str, data_config:str, out_dir:str, remove:b
             # write slurm script and sbatch (unless dry-run)
             print(f"    Submitting job for DeepSomatic...", file = log)
 
-            if len(call_commands) > 0 and is_file_missing_or_empty(f"{filtered_vcf}.gz"):
+            if len(call_commands) > 0 and is_file_missing_or_empty(filtered_vcf):
 
                 ds_job_id, ds_script = write_script(
                     args,
@@ -221,7 +221,7 @@ def deepsomatic_pipeline(tool_config:str, data_config:str, out_dir:str, remove:b
             else:
                 print(f"      >> DeepSomatic step already completed; no jobs to submit.", file = log)
 
-            final_files.append(f"{filtered_vcf}.gz")
+            final_files.append(filtered_vcf)
 
         # do cleanup once per donor
         if remove:

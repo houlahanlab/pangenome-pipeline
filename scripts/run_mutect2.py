@@ -115,9 +115,9 @@ def mutect2_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
     bcftools_executable, gatk_executable, tabix_executable = None, None, None
 
     if 'container_path' in tool_data:
-        bcftools_executable = tool_data['container_path']
-        gatk_executable = tool_data['container_path']
-        tabix_executable = tool_data['container_path']
+        bcftools_executable = f"{tool_data['container_path']} bcftools"
+        gatk_executable = f"{tool_data['container_path']} gatk"
+        tabix_executable = f"{tool_data['container_path']} tabix"
     else:
         bcftools_executable = tool_data['bcftools_path']
         gatk_executable = tool_data['gatk_path']

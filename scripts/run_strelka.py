@@ -89,9 +89,9 @@ def strelka_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
     bcftools_executable, strelka_executable, tabix_executable = None, None, None
 
     if 'container_path' in tool_data:
-        bcftools_executable = tool_data['container_path']
-        strelka_executable = tool_data['container_path']
-        tabix_executable = tool_data['container_path']
+        bcftools_executable = f"{tool_data['container_path']} bcftools"
+        strelka_executable = f"{tool_data['container_path']}"
+        tabix_executable = f"{tool_data['container_path']} tabix"
     else:
         bcftools_executable = tool_data['bcftools_path']
         strelka_executable = tool_data['strelka_path']
@@ -220,7 +220,7 @@ def strelka_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
             else:
                 print(f"       >> Strelka step already completed; no jobs to submit.", file = log)
 
-            final_files.append(f"{filtered_vcf}.gz")
+            final_files.append(f"{filtered_vcf}")
 
         # do cleanup once per donor
         if remove:

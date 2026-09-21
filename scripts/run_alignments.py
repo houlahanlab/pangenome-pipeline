@@ -266,9 +266,9 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
     vg_executable, samtools_executable, gatk_executable = None, None, None
 
     if 'container_path' in tool_data:
-        vg_executable = tool_data['container_path']
-        samtools_executable = tool_data['container_path']
-        gatk_executable = tool_data['container_path']
+        vg_executable = f"{tool_data['container_path']} vg"
+        samtools_executable = f"{tool_data['container_path']} samtools"
+        gatk_executable = f"{tool_data['container_path']} gatk"
     else:
         vg_executable = tool_data['vg_path']
         samtools_executable = tool_data['samtools_path']
