@@ -220,7 +220,7 @@ def strelka_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
             else:
                 print(f"       >> Strelka step already completed; no jobs to submit.", file = log)
 
-            final_files.append(f"{filtered_vcf}")
+            final_files.append(filtered_vcf)
 
         # do cleanup once per donor
         if remove:
