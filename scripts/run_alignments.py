@@ -421,7 +421,8 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
                 if len(align_commands) > 0 and is_file_missing_or_empty(recal_bam):        
 
                     align_job_id, align_script = write_script(
-                        args,
+                        log_dir = log_directory,
+                        dry_run = dry_run,
                         job_name = f"run_alignment_{sample}",
                         command = align_commands,
                         job_parameters = tool_data['giraffe']
@@ -486,7 +487,8 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
                 if len(gatk_commands) > 0 and is_file_missing_or_empty(recal_bam):
 
                     bqsr_job_id, bqsr_script = write_script(
-                        args,
+                        log_dir = log_directory,
+                        dry_run = dry_run,
                         job_name = f"run_postprocessing_{sample}",
                         command = gatk_commands,
                         job_parameters = tool_data['gatk'],
@@ -544,7 +546,8 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
             if len(qc_commands) > 0:
 
                 qc_job_id, qc_script = write_script(
-                    args,
+                    log_dir = log_directory,
+                    dry_run = dry_run,
                     job_name = f"run_bamqc_{sample}",
                     command = qc_commands,
                     job_parameters = {"mem": "4G", "time": "8:0:0"},
@@ -598,7 +601,8 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
             print(f"\n  Submitting job for CalculateContamination step...", file = log)
 
             contam_job_id, contam_script = write_script(
-                args,
+                log_dir = log_directory,
+                dry_run = dry_run,
                 job_name = f"run_estimate_contamination_{donor}",
                 command = contamination_commands,
                 job_parameters = {"mem": "4G", "time": "4:0:0"},
@@ -630,7 +634,8 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
 
             if len(patient_jobs) > 0:
                 clean_job_id, clean_script = write_script(
-                    args,
+                    log_dir = log_directory,
+                    dry_run = dry_run,
                     job_name = f"run_cleanup_{donor}",
                     command = [cleanup_command],
                     job_parameters = {"mem": "256M", "time": "1:0:0"},
@@ -663,7 +668,8 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
     
     if len(all_jobs) > 0:
         getqc_job_id, getqc_script = write_script(
-            args,
+            log_dir = log_directory,
+            dry_run = dry_run,
             job_name = f"run_collect_cohort_qc_metrics",
             command = [collect_qc_cmd],
             job_parameters = {"mem": "256M", "time": "1:0:0"},
@@ -684,7 +690,8 @@ def graph_alignment_pipeline(tool_config:str, data_config:str, out_dir:str, out_
         sacct_out = f"{out_dir}/logs/slurm_job_metrics_{current_run}.out"
         sacct_command = collect_job_stats(all_jobs, sacct_out)
         sacct_job_id, sacct_script = write_script(
-            args,
+            log_dir = log_directory,
+            dry_run = dry_run,
             job_name = "collect_job_metrics",
             command = [sacct_command],
             job_parameters = {"mem": "256M", "time": "1:0:0"},

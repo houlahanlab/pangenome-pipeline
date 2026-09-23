@@ -47,7 +47,7 @@ def main(tool_config:str, data_config:str, out_dir:str, run_alignment:bool = Fal
 
 
     # indicate potential directories
-    alignment_directory = os.path.join(out_dir, 'aligments')
+    alignment_directory = os.path.join(out_dir, 'alignments')
     mutect2_directory = os.path.join(out_dir, 'Mutect2')
     strelka_directory = os.path.join(out_dir, 'Strelka')
     somsnip_directory = os.path.join(out_dir, 'SomaticSniper')
@@ -65,7 +65,7 @@ def main(tool_config:str, data_config:str, out_dir:str, run_alignment:bool = Fal
 
    
     ### ALIGNMENT STEP ###
-    print("\nChecking if alignment pipeline should be run...", file = log)
+    print("Checking if alignment pipeline should be run...", file = log)
 
     if run_alignment:
 
@@ -73,9 +73,9 @@ def main(tool_config:str, data_config:str, out_dir:str, run_alignment:bool = Fal
 
         # run alignment pipeline
         bam_output = os.path.join(alignment_directory, 'processed_bams.yaml')
-        print(f"\n    Using FASTQs in {data_config}", file = log)
-        print(f"\n    Output directory: {alignment_directory}", file = log)
-        print(f"\n    Output BAM config: {bam_output}", file = log)
+        print(f"    Using FASTQs in {data_config}", file = log)
+        print(f"    Output directory: {alignment_directory}", file = log)
+        print(f"    Output BAM config: {bam_output}", file = log)
 
         alignment_job_id = graph_alignment_pipeline(
             tool_config = tool_config,
@@ -95,19 +95,19 @@ def main(tool_config:str, data_config:str, out_dir:str, run_alignment:bool = Fal
     print("\n----------\n", file = log)
 
     ### VARIANT CALLING STEPS ###
-    print("\nChecking which variant-calling tool(s) should be run...", file = log)
+    print("Checking which variant-calling tool(s) should be run...", file = log)
 
     if run_mutect2:
 
         print("\n  Submitting Mutect2 pipeline...", file = log)
 
         # run mutect2 pipeline
-        print(f"\n    Using BAMs in {bam_output}", file = log)
-        print(f"\n    Output directory: {mutect2_directory}", file = log)
+        print(f"    Using BAMs in {bam_output}", file = log)
+        print(f"    Output directory: {mutect2_directory}", file = log)
 
         mutect2_job_id = mutect2_pipeline(
             tool_config = tool_config,
-            data_config = data_config,
+            data_config = bam_output,
             out_dir = mutect2_directory,
             wait_for = alignment_job_id,
             remove = remove,
@@ -121,12 +121,12 @@ def main(tool_config:str, data_config:str, out_dir:str, run_alignment:bool = Fal
         print("\n  Submitting Strelka pipeline...", file = log)
 
         # run strelka pipeline
-        print(f"\n    Using BAMs in {bam_output}", file = log)
-        print(f"\n    Output directory: {strelka_directory}", file = log)
+        print(f"    Using BAMs in {bam_output}", file = log)
+        print(f"    Output directory: {strelka_directory}", file = log)
 
         strelka_job_id = strelka_pipeline(
             tool_config = tool_config,
-            data_config = data_config,
+            data_config = bam_output,
             out_dir = strelka_directory,
             wait_for = alignment_job_id,
             remove = remove,
@@ -140,12 +140,12 @@ def main(tool_config:str, data_config:str, out_dir:str, run_alignment:bool = Fal
         print("\n  Submitting SomaticSniper pipeline...", file = log)
 
         # run somaticsniper pipeline
-        print(f"\n    Using BAMs in {bam_output}", file = log)
-        print(f"\n    Output directory: {somsnip_directory}", file = log)
+        print(f"    Using BAMs in {bam_output}", file = log)
+        print(f"    Output directory: {somsnip_directory}", file = log)
 
         somaticsniper_job_id = somaticsniper_pipeline(
             tool_config = tool_config,
-            data_config = data_config,
+            data_config = bam_output,
             out_dir = somsnip_directory,
             wait_for = alignment_job_id,
             remove = remove,
@@ -159,12 +159,12 @@ def main(tool_config:str, data_config:str, out_dir:str, run_alignment:bool = Fal
         print("\n  Submitting DeepSomatic pipeline...", file = log)
 
         # run deepsomatic pipeline
-        print(f"\n    Using BAMs in {bam_output}", file = log)
-        print(f"\n    Output directory: {deepsom_directory}", file = log)
+        print(f"    Using BAMs in {bam_output}", file = log)
+        print(f"    Output directory: {deepsom_directory}", file = log)
 
         deepsomatic_job_id = deepsomatic_pipeline(
             tool_config = tool_config,
-            data_config = data_config,
+            data_config = bam_output,
             out_dir = deepsom_directory,
             wait_for = alignment_job_id,
             remove = remove,

@@ -241,7 +241,8 @@ def mutect2_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
             if len(call_commands) > 0 and is_file_missing_or_empty(filtered_vcf):
 
                 m2_job_id, m2_script = write_script(
-                    args,
+                    log_dir = log_directory,
+                    dry_run = dry_run,
                     job_name = f"run_mutect2_{sample}",
                     command = call_commands,
                     depends = prior_jobs,
@@ -274,7 +275,8 @@ def mutect2_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
 
             if len(patient_jobs) > 0:
                 clean_job_id, clean_script = write_script(
-                    args,
+                    log_dir = log_directory,
+                    dry_run = dry_run,
                     job_name = f"run_cleanup_{donor}",
                     command = [cleanup_command],
                     job_parameters = {"mem": "256M", "time": "1:0:0"},
@@ -296,7 +298,8 @@ def mutect2_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool 
         sacct_out = f"{out_dir}/logs/slurm_job_metrics_{current_run}.out"
         sacct_command = collect_job_stats(all_jobs, sacct_out)
         sacct_job_id, sacct_script = write_script(
-            args,
+            log_dir = log_directory,
+            dry_run = dry_run,
             job_name = "collect_job_metrics",
             command = [sacct_command],
             job_parameters = {"mem": "256M", "time": "1:0:0"},

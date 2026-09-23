@@ -31,10 +31,10 @@ def get_java_mem(mem):
     return java_mem
 
 
-def write_script(args, job_name, command, job_parameters=[], depends=None, array=None):
+def write_script(log_dir:str, job_name:str, command:str, job_parameters=[], depends=None, array=None, dry_run:bool = False):
     """Write slurm commands to file and submit jobs."""
 
-    job_dir = f"{args.out_dir}/logs/{job_name}"
+    job_dir = f"{log_dir}/{job_name}"
     script = f"{job_dir}/script.sh"
     os.makedirs(job_dir, exist_ok=True)
 
@@ -88,7 +88,7 @@ def write_script(args, job_name, command, job_parameters=[], depends=None, array
     export_slurm_script(slurm, script)
 
     job_id = job_name
-    if not args.dry_run:
+    if not dry_run:
         job_id = slurm.sbatch('' + Slurm.SLURM_ARRAY_TASK_ID);
 
     return job_id,script
