@@ -26,6 +26,7 @@ Required tools/packages:
  * R packages: argparse
 
 * VG, samtools, bcftools, bgzip, tabix, GATK (>= v4), Strelka, SomaticSniper (with bam-readcount), DeepSomatic
+ * note that all of these are conventiently packaged using docker [here](/path/to/some/repo)
 
 Recommended/optional:
 * apptainer

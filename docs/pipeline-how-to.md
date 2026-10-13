@@ -33,7 +33,7 @@ All of the tools necessary to run the alignment and variant-calling steps (with 
 If your compute environment enables apptainer usage, download the above container and set the executable within your [pipeline_config.yaml](../examples/example_pipeline_config.yaml) : 
 
 <pre><code># tool versions/executables
-container_path: 'apptainer exec pangenome-pipeline_v1.sif'
+container_path: 'apptainer exec pangenome-somaticsnv-pipeline_v1.sif'
 </code></pre>
 
 If you would like to use alternate methods for each tool (ie, use locally-installed executables), you can likewise supply the individual commands:
@@ -41,8 +41,8 @@ If you would like to use alternate methods for each tool (ie, use locally-instal
 <pre><code># tool versions/executables
 vg_path: 'apptainer exec vg_v1.61.0.sif vg' # example if using a pre-build apptainer image
 gatk_path: 'module load gatk/4.3.0.0; gatk' # example if loading via the module load system
-samtools_path: 'apptainer exec pangenome-pipeline_v1.sif samtools' # example if using a pre-build apptainer image
-bcftools_path: 'apptainer exec pangenome-pipeline_v1.sif bcftools' # example if using a pre-build apptainer image
+samtools_path: 'apptainer exec pangenome-somaticsnv-pipeline_v1.sif samtools' # example if using a pre-build apptainer image
+bcftools_path: 'apptainer exec pangenome-somaticsnv-pipeline_v1.sif bcftools' # example if using a pre-build apptainer image
 bgzip_path: 'bgzip' # example if installed locally (found in your $PATH)
 tabix_path: 'tabix' # example if installed locally (found in your $PATH)
 strelka_path: 'apptainer exec strelka_2.9.10.sif' # example if using a pre-build apptainer image
@@ -157,7 +157,7 @@ target_regions: /path/to/resources/capture_panels/Agilent_SureSelect_All_Exon_V5
 
 # enter the executable for the following tools, as found on your specific system
 vg_path: 'apptainer exec /path/to/vg_v1.61.0.sif vg'
-samtools_path: 'apptainer exec pangenome-pipeline_v1.sif samtools'
+samtools_path: 'apptainer exec pangenome-somaticsnv-pipeline_v1.sif samtools'
 gatk_path: 'gatk'
 
 # stage parameters for slurm
@@ -197,7 +197,7 @@ target_regions: /path/to/resources/capture_panels/Agilent_SureSelect_All_Exon_V5
 
 # enter the executable for the following tools, as found on your specific system
 strelka_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/strelka_2.9.10--h9ee0642_1.sif'
-bcftools_path: 'apptainer exec pangenome-pipeline_v1.sif bcftools'
+bcftools_path: 'apptainer exec pangenome-somaticsnv-pipeline_v1.sif bcftools'
 bgzip_path: 'bgzip'
 tabix_path: 'tabix'
 
@@ -233,7 +233,7 @@ germline_resource: /path/to/resources/germline_resource/af-only-gnomad.hg38.vcf.
 
 # enter the executable for the following tools, as found on your specific system
 gatk_path: 'gatk'
-bcftools_path: 'apptainer exec pangenome-pipeline_v1.sif bcftools'
+bcftools_path: 'apptainer exec pangenome-somaticsnv-pipeline_v1.sif bcftools'
 bgzip_path: 'bgzip'
 tabix_path: 'tabix'
 
