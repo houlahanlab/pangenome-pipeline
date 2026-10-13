@@ -107,12 +107,12 @@ python scripts/run_pangenome_somatic_pipeline.py \
 
 This will generate the directory structure and code needed. Specifically, the pipeline will run in 2 stages:
 1. Data processing
-  - alignment to the graph-reference using VG
-  - extraction of reads aligned to the linear reference and conversion to BAM format
-  - GATK's base-quality score recalibration
-  - QC
+    * alignment to the graph-reference using VG
+    * extraction of reads aligned to the linear reference and conversion to BAM format
+    * GATK's base-quality score recalibration
+    * QC
 2. Somatic SNV detection using T/N samples
-  - using Strelka2 and Mutect2
+    * using Strelka2 and Mutect2
 
 ### Pipeline arguments
 <pre><code>python scripts/run_pangenome_somatic_pipeline.py -h </code></pre>
@@ -131,18 +131,8 @@ options:
 |                | --remove      | if used, intermediate files will be removed   |
 |                | --dry_run     | if used, directories/scripts will be created but no jobs will be submitted  |
 
-### Step 1:
-<pre><code># 1) Data processing
-python scripts/run_alignments.py \
--t /path/to/project_tool_config.yaml \
--d /path/to/project_fastq_config.yaml \
--o /path/to/project/output_directory/alignments \
--b /path/to/project/output_directory/alignments/processed_bams.yaml \
---mode slurm { or local } \
-{optional: --remove, --dry-run }
-</code></pre>
-
-From project_tool_config.yaml:
+### Step 1: Data processing
+Set up the project_tool_config.yaml:
 <pre><code># reference files
 reference: /path/to/resources/references/linear_reference.fa
 ref_gbz: /path/to/resources/references/graph_reference.gbz
@@ -171,26 +161,27 @@ gatk:
   cpus: 2
 </code></pre>
 
+Run:
+<pre><code>python scripts/run_alignments.py \
+-t /path/to/project_tool_config.yaml \
+-d /path/to/project_fastq_config.yaml \
+-o /path/to/project/output_directory/alignments \
+-b /path/to/project/output_directory/alignments/processed_bams.yaml \
+--mode slurm { or local } \
+{optional: --remove, --dry-run }
+</code></pre>
+
 For each sample in project_fastq_config.yaml, this will create a call-ready BAM file: /path/to/project/output_directory/alignments/PATIENT/SAMPLE/SAMPLE_recalibrated.bam
 
 This will output the paths for these BAM files here: /path/to/project/output_directory/alignments/processed_bams.yaml
 
 QC metrics from all samples will also collected and output here: 
-- /path/to/project/output_directory/alignments/date_PROJECTID_vg_alignment_statistics.tsv
-- /path/to/project/output_directory/alignments/date_PROJECTID_gatk_alignment_statistics.tsv
-- /path/to/project/output_directory/alignments/date_PROJECTID_contamination_estimates.tsv
+* /path/to/project/output_directory/alignments/date_PROJECTID_vg_alignment_statistics.tsv
+* /path/to/project/output_directory/alignments/date_PROJECTID_gatk_alignment_statistics.tsv
+* /path/to/project/output_directory/alignments/date_PROJECTID_contamination_estimates.tsv
 
-### Step 2A Strelka2:
-<pre><code># 2A) Variant Calling with Strelka2
-python scripts/run_strelka.py \
--t /path/to/project_tool_config.yaml \
--d /path/to/project/alignments/processed_bams.yaml \
--o /path/to/project/output_directory/variant-calling/Strelka \
---mode slurm { or local } \
-{optional: --remove, --dry-run }
-</code></pre>
-
-From project_tool_config.yaml:
+### Step 2: Variant Calling
+Set up the strelka2-specific parameters in project_tool_config.yaml:
 <pre><code># reference files
 reference: /path/to/resources/references/linear_reference.fa
 target_regions: /path/to/resources/capture_panels/Agilent_SureSelect_All_Exon_V5.bed.gz
@@ -212,19 +203,18 @@ strelka:
   cpus: 1
 </code></pre>
 
-For each tumour sample in processed_bams.yaml, this will create a filtered VCF (somatic SNVs with PASS filter): /path/to/project/output_directory/variant-calling/Strelka/PATIENT/SAMPLE/SAMPLE_Strelka_pass_variants.vcf.gz
-
-### Step 2B Mutect2:
-<pre><code># 2B) Variant Calling with Mutect2
-python scripts/run_mutect2.py \
+Run:
+<pre><code>python scripts/run_strelka.py \
 -t /path/to/project_tool_config.yaml \
 -d /path/to/project/alignments/processed_bams.yaml \
--o /path/to/project/output_directory/variant-calling/Mutect2 \
+-o /path/to/project/output_directory/variant-calling/Strelka \
 --mode slurm { or local } \
 {optional: --remove, --dry-run }
 </code></pre>
 
-From project_tool_config.yaml:
+For each tumour sample in processed_bams.yaml, this will create a filtered VCF (somatic SNVs with PASS filter): /path/to/project/output_directory/variant-calling/Strelka/PATIENT/SAMPLE/SAMPLE_Strelka_pass_variants.vcf.gz
+
+Set up the mutect2-specific parameters in project_tool_config.yaml:
 <pre><code># reference files
 reference: /path/to/resources/references/linear_reference.fa
 target_regions: /path/to/resources/capture_panels/Agilent_SureSelect_All_Exon_V5.bed.gz
@@ -242,6 +232,15 @@ mutect2:
   time: '4:0:0'
   mem: '4G'
   cpus: 1
+</code></pre>
+
+Run:
+<pre><code>python scripts/run_mutect2.py \
+-t /path/to/project_tool_config.yaml \
+-d /path/to/project/alignments/processed_bams.yaml \
+-o /path/to/project/output_directory/variant-calling/Mutect2 \
+--mode slurm { or local } \
+{optional: --remove, --dry-run }
 </code></pre>
 
 For each tumour sample in processed_bams.yaml, this will create a filtered VCF (somatic SNVs and INDELs with PASS filter): /path/to/project/output_directory/variant-calling/Mutect2/PATIENT/SAMPLE/SAMPLE_Mutect2_pass_variants.vcf.gz

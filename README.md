@@ -3,11 +3,11 @@ Pipelines for pangenome-based analyses.
 
 ## Introduction
 This is a collection of pipelines to be used for NGS analyses using the pangenome reference.
-- run_alignment.py: this will align reads from fastq files (paired end) to a graph-based reference file
-- run_strelka.py: this will run the Strelka2 variant-caller on paired T/N samples
-- run_somaticsniper.py: this will run the SomaticSniper variant-caller on paired T/N samples
-- run_mutect2.py: this will run the Mutect2 variant-caller on paired T/N samples or T-only samples
-- run_deepsomatic.py: this will run the DeepSomatic variant-caller on paired T/N samples or T-only samples
+* run_alignment.py: this will align reads from fastq files (paired end) to a graph-based reference file
+* run_strelka.py: this will run the Strelka2 variant-caller on paired T/N samples
+* run_somaticsniper.py: this will run the SomaticSniper variant-caller on paired T/N samples
+* run_mutect2.py: this will run the Mutect2 variant-caller on paired T/N samples or T-only samples
+* run_deepsomatic.py: this will run the DeepSomatic variant-caller on paired T/N samples or T-only samples
 
 Start by creating a clone of the repository:
 
@@ -21,12 +21,12 @@ The pangenome-pipeline was developed using python. Jobs are managed either using
 
 Required tools/packages:
 * python3
- * python packages: os, subprocess, yaml, argparse, datetime, simple_slurm
+    * python packages: os, subprocess, yaml, argparse, datetime, simple_slurm
 * R (>= 4.5.3)
- * R packages: argparse
+    * R packages: argparse
 
 * VG, samtools, bcftools, bgzip, tabix, GATK (>= v4), Strelka, SomaticSniper (with bam-readcount), DeepSomatic
- * note that all of these are conventiently packaged using docker [here](/path/to/some/repo)
+    * note that all of these are conventiently packaged using docker [here](/path/to/some/repo)
 
 Recommended/optional:
 * apptainer
@@ -55,9 +55,8 @@ python scripts/run_alignments.py -t /path/to/your/tool_config.yaml -d /path/to/y
 
 # now, submit the jobs to slurm!
 python scripts/run_alignments.py -t /path/to/your/tool_config.yaml -d /path/to/your/data_config.yaml -o /path/to/output/alignments -b /path/to/output/alignments/recalibrated_bam_files.yaml -m slurm --remove
-</code></pre>
 
-<pre><code> # test run the Strelka variant-calling pipeline; this will generate the output directory structure and scripts that will be submitted to slurm
+# test run the Strelka variant-calling pipeline; this will generate the output directory structure and scripts that will be submitted to slurm
 # check that all of these seem reasonable before submitting the next command
 python scripts/run_strelka.py -t /path/to/your/tool_config.yaml -d /path/to/output/alignments/recalibrated_bam_files.yaml -o /path/to/variant_callers/Strelka -m slurm --remove --dry_run
 
