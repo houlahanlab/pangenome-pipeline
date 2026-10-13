@@ -181,6 +181,7 @@ QC metrics from all samples will also collected and output here:
 * /path/to/project/output_directory/alignments/date_PROJECTID_contamination_estimates.tsv
 
 ### Step 2: Variant Calling
+#### Strelka2
 Set up the strelka2-specific parameters in project_tool_config.yaml:
 <pre><code># reference files
 reference: /path/to/resources/references/linear_reference.fa
@@ -214,6 +215,7 @@ Run:
 
 For each tumour sample in processed_bams.yaml, this will create a filtered VCF (somatic SNVs with PASS filter): /path/to/project/output_directory/variant-calling/Strelka/PATIENT/SAMPLE/SAMPLE_Strelka_pass_variants.vcf.gz
 
+#### Mutect2
 Set up the mutect2-specific parameters in project_tool_config.yaml:
 <pre><code># reference files
 reference: /path/to/resources/references/linear_reference.fa
