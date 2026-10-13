@@ -1,7 +1,7 @@
 # Pangenome:SomaticSNV pipeline
 
 ## Description
-Align paired-end FASTQ files to a pangenome and perform somatic variant detection from tumour/normal paired samples.
+Align paired-end FASTQ files to a pangenome and perform somatic variant detection (SNVs) from tumour/normal paired samples.
 
 ## Pipeline configuration
 The pangenome-somatic pipeline requires a configuration file in YAML format. This YAML file provides paths to all input files (graph- and linear- reference files, target-regions, etc.), tool executables (to enable cross-system compatibility) and per-stage resource requirements.
@@ -39,13 +39,13 @@ container_path: 'apptainer exec pangenome-pipeline_v1.sif'
 If you would like to use alternate methods for each tool (ie, use locally-installed executables), you can likewise supply the individual commands:
 
 <pre><code># tool versions/executables
-vg_path: 'apptainer exec vg_v1.61.0.sif vg' # or just 'vg' if in your $PATH
-gatk_path: 'module load gatk/4.3.0.0; gatk'
-samtools_path: 'apptainer exec pangenome-pipeline_v1.sif samtools' # or just 'samtools' if in your $PATH
-bcftools_path: 'apptainer exec pangenome-pipeline_v1.sif bcftools' # or just 'bcftools' if in your $PATH
-bgzip_path: 'bgzip'
-tabix_path: 'tabix'
-strelka_path: 'apptainer exec strelka_2.9.10.sif'
+vg_path: 'apptainer exec vg_v1.61.0.sif vg' # example if using a pre-build apptainer image
+gatk_path: 'module load gatk/4.3.0.0; gatk' # example if loading via the module load system
+samtools_path: 'apptainer exec pangenome-pipeline_v1.sif samtools' # example if using a pre-build apptainer image
+bcftools_path: 'apptainer exec pangenome-pipeline_v1.sif bcftools' # example if using a pre-build apptainer image
+bgzip_path: 'bgzip' # example if installed locally (found in your $PATH)
+tabix_path: 'tabix' # example if installed locally (found in your $PATH)
+strelka_path: 'apptainer exec strelka_2.9.10.sif' # example if using a pre-build apptainer image
 </code></pre>
 
 ## Sample Data
@@ -101,6 +101,7 @@ python scripts/run_pangenome_somatic_pipeline.py \
 --alignment \
 --strelka \
 --mutect2 \
+--mode slurm { or local } \
 {optional: --remove, --dry-run }
 </code></pre>
 
@@ -126,6 +127,7 @@ options:
 |                | --alignment   | should the alignment step be run?   |
 |                | --strelka     | should the strelka variant-calling step be run?   |
 |                | --mutect2     | should the mutect2 variant-calling step be run?   |
+| -m             | --mode        | run mode; either slurm or local (default = slurm) |
 |                | --remove      | if used, intermediate files will be removed   |
 |                | --dry_run     | if used, directories/scripts will be created but no jobs will be submitted  |
 
@@ -136,6 +138,7 @@ python scripts/run_alignments.py \
 -d /path/to/project_fastq_config.yaml \
 -o /path/to/project/output_directory/alignments \
 -b /path/to/project/output_directory/alignments/processed_bams.yaml \
+--mode slurm { or local } \
 {optional: --remove, --dry-run }
 </code></pre>
 
@@ -153,13 +156,14 @@ germline_resource: /path/to/resources/germline_resource/af-only-gnomad.hg38.vcf.
 target_regions: /path/to/resources/capture_panels/Agilent_SureSelect_All_Exon_V5.bed.gz
 
 # enter the executable for the following tools, as found on your specific system
-vg_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/vg_v1.61.0.sif vg'
+vg_path: 'apptainer exec /path/to/vg_v1.61.0.sif vg'
+samtools_path: 'apptainer exec pangenome-pipeline_v1.sif samtools'
 gatk_path: 'gatk'
 
 # stage parameters for slurm
 giraffe:
   time: '8:0:0'
-  mem: '48G'
+  mem: '48G' # giraffe must load the full reference index into memory
   cpus: 2
 gatk:
   time: '8:0:0'
@@ -182,6 +186,7 @@ python scripts/run_strelka.py \
 -t /path/to/project_tool_config.yaml \
 -d /path/to/project/alignments/processed_bams.yaml \
 -o /path/to/project/output_directory/variant-calling/Strelka \
+--mode slurm { or local } \
 {optional: --remove, --dry-run }
 </code></pre>
 
@@ -191,8 +196,10 @@ reference: /path/to/resources/references/linear_reference.fa
 target_regions: /path/to/resources/capture_panels/Agilent_SureSelect_All_Exon_V5.bed.gz
 
 # enter the executable for the following tools, as found on your specific system
-conda_path: /workspace/lab/houlahanlab/software/micromamba/bin/conda # used for bcftools/bgzip/tabix
 strelka_path: 'apptainer exec /workspace/lab/houlahanlab/software/apptainers/strelka_2.9.10--h9ee0642_1.sif'
+bcftools_path: 'apptainer exec pangenome-pipeline_v1.sif bcftools'
+bgzip_path: 'bgzip'
+tabix_path: 'tabix'
 
 # stage parameters for slurm
 # strelka requires the reference fasta and test BAMs to contain the same contig information
@@ -213,6 +220,7 @@ python scripts/run_mutect2.py \
 -t /path/to/project_tool_config.yaml \
 -d /path/to/project/alignments/processed_bams.yaml \
 -o /path/to/project/output_directory/variant-calling/Mutect2 \
+--mode slurm { or local } \
 {optional: --remove, --dry-run }
 </code></pre>
 
@@ -224,8 +232,10 @@ pon: /path/to/resources/germline_resource/1000g_pon.hg38.vcf.gz
 germline_resource: /path/to/resources/germline_resource/af-only-gnomad.hg38.vcf.gz
 
 # enter the executable for the following tools, as found on your specific system
-conda_path: /workspace/lab/houlahanlab/software/micromamba/bin/conda # used for bcftools/bgzip/tabix
 gatk_path: 'gatk'
+bcftools_path: 'apptainer exec pangenome-pipeline_v1.sif bcftools'
+bgzip_path: 'bgzip'
+tabix_path: 'tabix'
 
 # stage parameters for slurm
 mutect2:
