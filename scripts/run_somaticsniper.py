@@ -61,7 +61,7 @@ def run_sniper_filters(somsnip_executable:str, rc_executable:str, samtools:str, 
     return final_command
 
 
-def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove:bool = False, dry_run:bool = False, wait_for:bool = False) -> str:
+def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, mode:str = 'slurm', remove:bool = False, dry_run:bool = False, wait_for:str = None) -> str:
 
     # load tool/paramter information
     with open(tool_config, 'r') as file:
@@ -77,17 +77,16 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
     else:
         log_file = f"{log_directory}/somaticsniper_pipeline__{current_run}.log"
     
-    log = open(log_file, 'w')
-
-    print("---", file = log)
-    print("Running the SomaticSniper variant-calling pipeline.", file = log)
-    print(f"  Tool config used: {tool_config}", file = log)
-    print(f"  Data config used: {data_config}", file = log)
-    print(f"  Outputting to: {out_dir}", file = log)
-    if remove:
-        print("  >> clean mode selected (--remove); intermediate files will be removed upon completion", file = log)
-    if dry_run:
-        print("  >> trial mode selected (--dry_run); jobs will not be submitted", file = log)
+    with open(log_file, 'w') as log:
+        log.write("---\n")
+        log.write("Running the SomaticSniper variant-calling pipeline.\n")
+        log.write(f"  Tool config used: {tool_config}\n")
+        log.write(f"  Data config used: {data_config}\n")
+        log.write(f"  Outputting to: {out_dir}\n")
+        if remove:
+            log.write("  >> clean mode selected (--remove); intermediate files will be removed upon completion\n")
+        if dry_run:
+            log.write("  >> trial mode selected (--dry_run); jobs will not be submitted\n")
 
     # extract tool paths from config
     somaticsniper_executable = tool_data['somaticsniper_path']
@@ -114,10 +113,11 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
     reference = tool_data['reference']
 
      # add details to log file
-    print(f"\nLinear reference file used is {reference}", file = log)
-    print(f"\nUsing SomaticSniper version: {somaticsniper_executable}", file = log)
-    print(f"\nUsing bam-readcount version: {readcount_executable}", file = log)
-    print("Using samtools/bcftools version: 1.23.1", file = log)
+    with open(log_file, 'a') as log:
+        log.write(f"\nLinear reference file used is {reference}\n")
+        log.write(f"\nUsing SomaticSniper version: {somaticsniper_executable}\n")
+        log.write(f"\nUsing bam-readcount version: {readcount_executable}\n")
+        log.write("Using samtools/bcftools version: 1.23.1\n")
 
    # load sample information
     with open(data_config, 'r') as file:
@@ -125,12 +125,13 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
 
     n_patients = len(sample_data.keys())
 
-    print(f"\n----------\nProcessing {n_patients} patients...", file = log)
+    with open(log_file, 'a') as log:
+        log.write(f"\n----------\nProcessing {n_patients} patients...\n")
 
     # is this pipeline waiting for any prior jobs?
     prior_jobs = []
     if wait_for:
-        prior_jobs = wait_for.split(",")
+        prior_jobs = str(wait_for).split(",")
         
     # initiate object to hold job_ids
     all_jobs = []
@@ -146,9 +147,13 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
             normal_id = normal_samples[0]
             normal_bam = sample_data[donor]['normal'][normal_id]
             
-            if not os.path.exists(normal_bam):
-                print(f"<<Error: Normal BAM file {normal_bam} not found. Skipping {donor}...>>", file = log)
-                continue
+            with open(log_file, 'a') as log:
+                log.write(f"\n  Using normal BAM: {normal_bam}\n")
+
+        else:
+            with open(log_file, 'a') as log:
+                log.write(f"  <<Error: No normal BAM provided. Skipping {donor}...>>\n")
+            continue
 
         patient_directory = os.path.join(out_dir, donor)
         os.makedirs(patient_directory, exist_ok=True)
@@ -158,19 +163,16 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
         cleanup_files = []
 
         n_samples = len(sample_data[donor].keys())
-        print(f"\nProcessing {n_samples} tumour samples for donor: {donor}", file = log)
+        with open(log_file, 'a') as log:
+            log.write(f"\nProcessing {n_samples} tumour samples for donor: {donor}\n")
 
         for sample in (sample_data[donor]['tumour'].keys()):
 
-            print(f"  Processing {sample}", file = log)
+            with open(log_file, 'a') as log:
+                log.write(f"  Processing {sample}\n")
 
             tumour_bam = sample_data[donor]['tumour'][sample]
 
-            # process all fastqs for each sample
-            if not os.path.exists(tumour_bam):
-                print(f"<<Error: BAM file {tumour_bam} not found. Skipping {sample}...>>", file = log)
-                continue
- 
             smp_directory = os.path.join(patient_directory, sample)
             os.makedirs(smp_directory, exist_ok=True)
 
@@ -222,27 +224,29 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
             call_commands = list(filter(None, [somsnip_command, filter_command]))
 
             # write slurm script and sbatch (unless dry-run)
-            print(f"    Submitting job for SomaticSniper...", file = log)
+            with open(log_file, 'a') as log:
+                log.write(f"    Submitting job for SomaticSniper...\n")
 
-            if len(call_commands) > 0 and is_file_missing_or_empty(filtered_vcf):   
+                if len(call_commands) > 0 and is_file_missing_or_empty(filtered_vcf):   
 
-                sniper_job_id, sniper_script = write_script(
-                    log_dir = log_directory,
-                    dry_run = dry_run,
-                    job_name = f"run_somaticsniper_{sample}",
-                    command = [cd_command] + call_commands,
-                    depends = prior_jobs,
-                    job_parameters = tool_data['somaticsniper']
-                )
+                    sniper_job_id, sniper_script = write_script(
+                        log_dir = log_directory,
+                        dry_run = dry_run,
+                        mode = mode,
+                        job_name = f"run_somaticsniper_{sample}",
+                        command = [cd_command] + call_commands,
+                        depends = prior_jobs,
+                        job_parameters = tool_data['somaticsniper']
+                    )
 
-                patient_jobs.append(sniper_job_id)
+                    patient_jobs.append(sniper_job_id)
 
-                print(f"      >> sbatch {sniper_script}", file = log)
-                if not dry_run:
-                    print(f"      >> job id is {sniper_job_id}", file = log)
+                    log.write(f"      >> RUNSCRIPT: {sniper_script}\n")
+                    if not dry_run:
+                        log.write(f"      >> job id is {sniper_job_id}\n")
 
-            else:
-                print(f"      >> SomaticSniper step already completed; no jobs to submit.", file = log)
+                else:
+                    log.write(f"      >> SomaticSniper step already completed; no jobs to submit.\n")
 
             final_files.append(filtered_vcf)
 
@@ -255,52 +259,53 @@ def somaticsniper_pipeline(tool_config:str, data_config:str, out_dir:str, remove
             cleanup_command += "\n  echo 'Final output VCF(s) is missing; not removing intermediate files!'"
             cleanup_command += "\n  exit 1"
             cleanup_command += "\nfi"
-        
-            print(f"\n  Running clean-up step for {donor}...", file = log)
 
-            if len(patient_jobs) > 0:
-                clean_job_id, clean_script = write_script(
-                    log_dir = log_directory,
-                    dry_run = dry_run,
-                    job_name = f"run_cleanup_{donor}",
-                    command = [cleanup_command],
-                    job_parameters = {"mem": "256M", "time": "1:0:0"},
-                    depends = patient_jobs
-                )
+            with open(log_file, 'a') as log:
+                log.write(f"\n  Running clean-up step for {donor}...\n")
 
-                patient_jobs.append(clean_job_id)
+                if len(patient_jobs) > 0:
+                    clean_job_id, clean_script = write_script(
+                        log_dir = log_directory,
+                        dry_run = dry_run,
+                        mode = mode,
+                        job_name = f"run_cleanup_{donor}",
+                        command = [cleanup_command],
+                        job_parameters = {"mem": "256M", "time": "1:0:0"},
+                        depends = patient_jobs
+                    )
 
-                print(f"    >> sbatch {clean_script}", file = log)
-                if not dry_run:
-                    print(f"    >> job id is {clean_job_id}", file = log)
+                    patient_jobs.append(clean_job_id)
+
+                    log.write(f"    >> RUNSCRIPT: {clean_script}\n")
+                    if not dry_run:
+                        log.write(f"    >> job id is {clean_job_id}\n")
 
         all_jobs += patient_jobs
 
-    # write slurm script and sbatch (unless dry-run)
-    sacct_job_id, sacct_script = None, None
-    
-    if not dry_run:
-        sacct_out = f"{out_dir}/logs/slurm_job_metrics_{current_run}.out"
-        sacct_command = collect_job_stats(all_jobs, sacct_out)
-        sacct_job_id, sacct_script = write_script(
-            log_dir = log_directory,
-            dry_run = dry_run,
-            job_name = "collect_job_metrics",
-            command = [sacct_command],
-            job_parameters = {"mem": "256M", "time": "1:0:0"},
-            depends = all_jobs 
-        )
-
     # add details to log file
-    print("\n----------\nAll patients processed.", file = log)
+    with open(log_file, 'a') as log:
+        log.write("\n----------\nAll patients processed.\n")
 
-    n_jobs = len(all_jobs)
-    print(f"\nTotal number of jobs to run: {n_jobs}", file = log)
+        n_jobs = len(all_jobs)
+        log.write(f"\nTotal number of jobs processed: {n_jobs}\n")
 
-    if not dry_run:
-        print(f"  >> Final job id is: {sacct_job_id}", file = log)
+        # write slurm script and sbatch (unless dry-run)
+        sacct_job_id, sacct_script = None, None
+        
+        if mode == 'slurm' and not dry_run:
+            sacct_out = f"{out_dir}/logs/slurm_job_metrics_{current_run}.out"
+            sacct_command = collect_job_stats(all_jobs, sacct_out)
+            sacct_job_id, sacct_script = write_script(
+                log_dir = log_directory,
+                dry_run = dry_run,
+                mode = mode,
+                job_name = "collect_job_metrics",
+                command = [sacct_command],
+                job_parameters = {"mem": "256M", "time": "1:0:0"},
+                depends = all_jobs 
+            )
 
-    log.close()
+            log.write(f"  >> Final job id is: {sacct_job_id}\n")
 
     return (sacct_job_id)
 
@@ -313,6 +318,7 @@ if __name__ == "__main__":
     parser.add_argument("-t", "--tool_config", help = "tool config (reference files and tool versions)")
     parser.add_argument("-d", "--data_config", help = "data config (bams listed in yaml format)")
     parser.add_argument("-o", "--out_dir", help = "path to output directory")
+    parser.add_argument("-m", "--mode", help = "run mode (local or slurm); defaults to slurm", default = 'slurm')
     parser.add_argument("--remove", action = "store_true", help = "should intermediates be removed?")
     parser.add_argument("--dry_run", action = "store_true", help = "is this a test?")
     parser.add_argument("--wait_for", help = "prior job ids (as a comma-separated list) that this function is dependent on")
@@ -322,6 +328,7 @@ if __name__ == "__main__":
         tool_config = args.tool_config, 
         data_config = args.data_config, 
         out_dir = args.out_dir,
+        mode = args.mode,
         remove = args.remove, 
         dry_run = args.dry_run,
         wait_for = args.wait_for

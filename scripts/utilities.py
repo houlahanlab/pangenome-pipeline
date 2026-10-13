@@ -1,15 +1,16 @@
 import os
+import subprocess
 
 from simple_slurm import Slurm
 
-def export_slurm_script(slurm_obj, filename: str):
+def export_slurm_script(slurm_obj, filename:str):
     """Safely extracts the script string, unescapes all heredoc modifications,
     and writes a clean, runnable copy to disk.
     """
     script_str = str(slurm_obj)
     
     # Need to unescape backslashes first.
-    # Otherwise,  escaping on the other characters will be corrupted.
+    # Otherwise, escaping on the other characters will be corrupted.
     script_str = script_str.replace("\\\\", "\\")
     script_str = script_str.replace("\\`", "`")
     script_str = script_str.replace("\\$", "$")
@@ -31,53 +32,59 @@ def get_java_mem(mem):
     return java_mem
 
 
-def write_script(log_dir:str, job_name:str, command:str, job_parameters=[], depends=None, array=None, dry_run:bool = False):
+def write_script(log_dir:str, job_name:str, command:str, mode:str = 'slurm', job_parameters=[], depends=None, array=None, dry_run:bool = False):
     """Write slurm commands to file and submit jobs."""
 
     job_dir = f"{log_dir}/{job_name}"
     script = f"{job_dir}/script.sh"
     os.makedirs(job_dir, exist_ok=True)
 
-    job_mem = '1G'
-    if 'mem' in job_parameters:
-        job_mem = job_parameters['mem']
+    # set up job parameters
+    if mode == 'local':
+        slurm = Slurm()
 
-    job_time = '1:0:0'
-    if 'time' in job_parameters:
-        job_time = job_parameters['time']
- 
-    job_cpus = '1'
-    if 'cpus' in job_parameters:
-        job_cpus = job_parameters['cpus']
-   
-    job_queue = 'general'
-    if 'G' in job_mem:
-        memory = int(job_mem.replace('G',''))
-        if memory > 100:
-            job_queue = 'massive'
+    elif mode == 'slurm':
+        job_mem = '1G'
+        if 'mem' in job_parameters:
+            job_mem = job_parameters['mem']
 
-    slurm = Slurm(
-        job_name = job_name,
-        chdir = job_dir,
-        time = job_time,
-        mem = job_mem,
-        cpus_per_task = job_cpus,
-        partition = job_queue
-    )
+        job_time = '1:0:0'
+        if 'time' in job_parameters:
+            job_time = job_parameters['time']
+    
+        job_cpus = '1'
+        if 'cpus' in job_parameters:
+            job_cpus = job_parameters['cpus']
+    
+        job_queue = 'general'
+        if 'G' in job_mem:
+            memory = int(job_mem.replace('G',''))
+            if memory > 100:
+                job_queue = 'massive'
 
-    if depends is not None:
-        clean_depends = [x for x in depends if x]
-        if clean_depends:
-            str_depends = ':'.join(map(str, clean_depends))
-            if job_name == "collect_job_metrics":
-                slurm.set_dependency(f"afterany:{str_depends}")
-            else:
-                slurm.set_dependency(f"afterok:{str_depends}")
-                slurm.add_arguments(kill_on_invalid_dep="yes")
+        slurm = Slurm(
+            job_name = job_name,
+            chdir = job_dir,
+            time = job_time,
+            mem = job_mem,
+            cpus_per_task = job_cpus,
+            partition = job_queue
+        )
 
-    if array is not None:
-        slurm.set_array(array)
+        if depends is not None:
+            clean_depends = [x for x in depends if x]
+            if clean_depends:
+                str_depends = ':'.join(map(str, clean_depends))
+                if job_name == "collect_job_metrics":
+                    slurm.set_dependency(f"afterany:{str_depends}")
+                else:
+                    slurm.set_dependency(f"afterok:{str_depends}")
+                    slurm.add_arguments(kill_on_invalid_dep="yes")
 
+        if array is not None:
+            slurm.set_array(array)
+
+    # add commands
     slurm.add_cmd("echo $HOSTNAME")
     slurm.add_cmd("echo $SLURM_NODELIST") # $SLURMD_NODENAME?
     slurm.add_cmd("set -e")
@@ -89,7 +96,10 @@ def write_script(log_dir:str, job_name:str, command:str, job_parameters=[], depe
 
     job_id = job_name
     if not dry_run:
-        job_id = slurm.sbatch('' + Slurm.SLURM_ARRAY_TASK_ID);
+        if mode == 'local':
+            subprocess.run(["bash", script])
+        elif mode == 'slurm':
+            job_id = slurm.sbatch('' + Slurm.SLURM_ARRAY_TASK_ID);
 
     return job_id,script
 
