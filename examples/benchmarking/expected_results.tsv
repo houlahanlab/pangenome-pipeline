@@ -1,0 +1,13 @@
+Chromosome	Position	Ref	Alt	Annotation	Expected_VAF	Strelka2_VAF	Mutect2_VAF
+chr17	1736050	A	G	WDR81 (synonymous)	1.000	1.000	0.977
+chr17	7632049	A	T	SHBG (intronic)	1.000	1.000	0.973
+chr17	7675217	T	G	TP53 (pathogenic)	1.000	0.980	0.980
+chr17	15765235	C	G	CDRT15P2 (nonsynonymous)	1.000	1.000	0.975
+chr17	28621023	T	G	KIAA0100 (missense)	1.000	1.000	0.980
+chr17	31182664	A	C	NF1 (missense)	1.000	1.000	0.977
+chr17	31995631	A	T	SUZ12 (stopgain)	0.195	lowEVS	strand_bias
+chr17	32479163	A	G	PSMD11 (intronic)	0.563	0.604	0.594
+chr17	36506563	C	G	MYO19 (missense)	1.000	1.000	0.982
+chr17	40703313	T	A	KRT24 (synonymous)	0.993	1.000	0.988
+chr17	68917414	G	A	ABCA8 (synonymous)	1.000	1.000	0.986
+chr17	78466683	C	T	DNAH17 (VUS)	1.000	1.000	0.988

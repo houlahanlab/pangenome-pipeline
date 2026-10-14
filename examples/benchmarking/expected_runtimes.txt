@@ -1,0 +1,7 @@
+Expected runtimes and memory required to run the test dataset:
+
+Mode	Step	ClockTime	CPUTime	MaxMemory
+local	all	1:03:40	2:07:20	58720724K
+slurm	alignments	0:28:02	1:50:00	53624648K
+slurm	mutect2	0:03:44	0:07:28	1373948K
+slurm	strelka2	0:03:21	0:06:42	530460K

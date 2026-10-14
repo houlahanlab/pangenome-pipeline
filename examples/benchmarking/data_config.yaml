@@ -1,0 +1,20 @@
+---
+HG008:
+    HG008-T:
+        type: tumour
+        libraries:
+            BCM_Illumina-HG008-T-20240319:
+                runlanes:
+                    L001:
+                        fastq:
+                            R1: /pangenome-pipeline/tests/HG008-T_R1.fastq.gz
+                            R2: /pangenome-pipeline/tests/HG008-T_R2.fastq.gz
+    HG008-N-D:
+        type: normal
+        libraries:
+            BCM_Illumina-HG008-N-D-20240319:
+                runlanes:
+                    L001:
+                        fastq:
+                            R1: /pangenome-pipeline/tests/HG008-N-D_R1.fastq.gz 
+                            R2: /pangenome-pipeline/tests/HG008-N-D_R2.fastq.gz

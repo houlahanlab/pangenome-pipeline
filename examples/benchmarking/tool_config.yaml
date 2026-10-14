@@ -1,0 +1,39 @@
+---
+project_name: TEST
+project_directory: /path/to/project/directory
+
+# reference files
+ref_gbz: /path/to/reference/files/hprc_v1.1_grch38/hprc-v1.1-mc-grch38.d9.gbz
+ref_dist: /path/to/reference/files/hprc_v1.1_grch38/hprc-v1.1-mc-grch38.d9.dist
+ref_min: /path/to/reference/files/hprc_v1.1_grch38/hprc-v1.1-mc-grch38.d9.min
+ref_paths: /path/to/reference/files/hprc_v1.1_grch38/grch38_linear.dict
+ref_pattern: 'GRCh38#0#'
+
+reference: /path/to/reference/files/hprc_v1.1_grch38/grch38_linear_fixed.fa
+known_indels: /path/to/reference/files/Homo_sapiens_assembly38.known_indels.vcf
+pon: /path/to/reference/files/1000g_pon.hg38.vcf.gz
+germline_resource: /path/to/reference/files/af-only-gnomad.hg38.vcf.gz
+
+target_regions: /path/to/reference/files/chr17_targeted_regions.bed.gz
+
+# tool versions
+container_path: 'apptainer exec pangenome-somaticsnv-pipeline_v1.sif'
+
+# parameters
+giraffe:
+  time: '8:0:0'
+  mem: '48G'
+  cpus: 2
+gatk:
+  time: '8:0:0'
+  mem: '8G'
+  cpus: 2
+strelka:
+  ref: /path/to/reference/files/hprc_v1.1_grch38/grch38_linear_fixed.fa
+  time: '4:0:0'
+  mem: '12G'
+  cpus: 1
+mutect2:
+  time: '4:0:0'
+  mem: '4G'
+  cpus: 1
