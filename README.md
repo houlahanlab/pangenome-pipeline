@@ -16,6 +16,7 @@ cd /workspace/lab/houlahanlab/your_macid/git
 git clone git@github.com:houlahanlab/pangenome-pipeline.git
 </code></pre>
 
+
 ## Dependencies
 The pangenome-pipeline was developed using python. Jobs are managed either using the Slurm workload manager (parallization across samples) or using a local-only method (each step runs in sequence).
 
@@ -31,57 +32,13 @@ Required tools/packages:
 Recommended/optional:
 * apptainer
 
-## Example
-To set up your config files, see includes examples:
-* example_data.yaml: this lists the paths to your fastq files while providing the donor/sample/library/lane information
-* example_tool.yaml: this lists the paths to your desired reference genome and provides the compute resource requirements for each slurm job
 
-<pre><code>cd /workspace/lab/houlahanlab/your_macid/git/pangenome-pipeline
+## Examples
+To run the benchmarking example using GIAB's HG008 T/N sample, see [here](./examples/benchmarking/README).
 
-# test run the pipeline; this will generate the output directory structure and scripts that will be submitted to slurm
-# check that all of these seem reasonable before submitting the next command
-python scripts/run_pangenome_somatic_pipeline.py -t /path/to/your/tool_config.yaml -d /path/to/your/data_config.yaml -o /path/to/output --alignment --mutect2 --strelka --somaticsniper --deepsomatic -m slurm --remove --dry_run
+To run your own project, set up your config files (see those in examples for templates):
+* [example_data.yaml](./examples/example_data.yaml): this lists the paths to your fastq files while providing the donor/sample/library/lane information for use in the SAM header
+* [example_tool.yaml](./examples/example_tool.yaml): this lists the paths to your desired reference genome and provides the compute resource requirements for each slurm job
 
-# now, submit the jobs to slurm!
-python scripts/run_pangenome_somatic_pipeline.py -t /path/to/your/tool_config.yaml -d /path/to/your/data_config.yaml -o /path/to/output --alignment --mutect2 --strelka --somaticsniper --deepsomatic -m slurm --remove
-</code></pre>
-
-Each step can be run separately:
-<pre><code>cd /workspace/lab/houlahanlab/your_macid/git/pangenome-pipeline
-
-# test run the alignment pipeline; this will generate the output directory structure and scripts that will be submitted to slurm
-# check that all of these seem reasonable before submitting the next command
-python scripts/run_alignments.py -t /path/to/your/tool_config.yaml -d /path/to/your/data_config.yaml -o /path/to/output/alignments -b /path/to/output/alignments/recalibrated_bam_files.yaml -m slurm --remove --dry_run
-
-# now, submit the jobs to slurm!
-python scripts/run_alignments.py -t /path/to/your/tool_config.yaml -d /path/to/your/data_config.yaml -o /path/to/output/alignments -b /path/to/output/alignments/recalibrated_bam_files.yaml -m slurm --remove
-
-# test run the Strelka variant-calling pipeline; this will generate the output directory structure and scripts that will be submitted to slurm
-# check that all of these seem reasonable before submitting the next command
-python scripts/run_strelka.py -t /path/to/your/tool_config.yaml -d /path/to/output/alignments/recalibrated_bam_files.yaml -o /path/to/variant_callers/Strelka -m slurm --remove --dry_run
-
-# now, submit the jobs to slurm!
-python scripts/run_strelka.py -t /path/to/your/tool_config.yaml -d /path/to/output/alignments/recalibrated_bam_files.yaml -o /path/to/variant_callers/Strelka -m slurm --remove
-
-# test run the SomaticSniper variant-calling pipeline; this will generate the output directory structure and scripts that will be submitted to slurm
-# check that all of these seem reasonable before submitting the next command
-python scripts/run_somaticsniper.py -t /path/to/your/tool_config.yaml -d /path/to/output/alignments/recalibrated_bam_files.yaml -o /path/to/variant_callers/SomaticSniper -m slurm --remove --dry_run
-
-# now, submit the jobs to slurm!
-python scripts/run_somaticsniper.py -t /path/to/your/tool_config.yaml -d /path/to/output/alignments/recalibrated_bam_files.yaml -o /path/to/variant_callers/SomaticSniper -m slurm --remove
-
-# test run the Mutect2 variant-calling pipeline; this will generate the output directory structure and scripts that will be submitted to slurm
-# check that all of these seem reasonable before submitting the next command
-python scripts/run_mutect2.py -t /path/to/your/tool_config.yaml -d /path/to/output/alignments/recalibrated_bam_files.yaml -o /path/to/variant_callers/Mutect2 -m slurm --remove --dry_run
-
-# now, submit the jobs to slurm!
-python scripts/run_mutect2.py -t /path/to/your/tool_config.yaml -d /path/to/output/alignments/recalibrated_bam_files.yaml -o /path/to/variant_callers/Mutect2 -m slurm --remove
-
-# test run the DeepSomatic variant-calling pipeline; this will generate the output directory structure and scripts that will be submitted to slurm
-# check that all of these seem reasonable before submitting the next command
-python scripts/run_deepsomatic.py -t /path/to/your/tool_config.yaml -d /path/to/output/alignments/recalibrated_bam_files.yaml -o /path/to/variant_callers/DeepSomatic -m slurm --remove --dry_run
-
-# now, submit the jobs to slurm!
-python scripts/run_deepsomatic.py -t /path/to/your/tool_config.yaml -d /path/to/output/alignments/recalibrated_bam_files.yaml -o /path/to/variant_callers/DeepSomatic -m slurm --remove
-</code></pre>
+See [documentation](./docs/pipeline-how-to.md) for further examples.
 
