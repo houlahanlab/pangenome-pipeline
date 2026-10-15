@@ -34,7 +34,7 @@ Recommended/optional:
 
 
 ## Examples
-To run the benchmarking example using GIAB's HG008 T/N sample, see [here](./examples/benchmarking/README).
+To run the benchmarking example using GIAB's HG008 T/N sample, see [here](./examples/benchmarking/README.md).
 
 To run your own project, set up your config files (see those in examples for templates):
 * [example_data.yaml](./examples/example_data.yaml): this lists the paths to your fastq files while providing the donor/sample/library/lane information for use in the SAM header
