@@ -4,24 +4,30 @@
 HG008 is a matched tumour-normal dataset developed by the Genome in a Bottle Consortium[1][1]: HG008-T is a pancreatic ductal adenocarcinoma cell line, while HG008-N-D is matched normal duodenal tissue. Both samples have been sequenced using multiple technologies and platforms, making it ideal for use in benchmarking studies.
 
 Sequencing data for HG008-T and HG008-N-D were downloaded from GIAB (WGS, in BAM format), along with a set of high-confidence somatic SNVs:
-    * https://42basepairs.com/download/web/giab/data_somatic/HG008/Liss_lab/BCM_Illumina-WGS_20240313/HG008-N-D_Illumina_169x_GRCh38-GIABv3.bam
-    * https://42basepairs.com/download/web/giab/data_somatic/HG008/Liss_lab/BCM_Illumina-WGS_20240313/HG008-T_Illumina_195x_GRCh38-GIABv3.bam
-    * https://42basepairs.com/download/web/giab/data_somatic/HG008/Liss_lab/analysis/Hartwig_Oncoanalyzer_BCM-ILMN_20260204/pave/HG008-T.sage.somatic.pave.vcf.gz
+
+* https://42basepairs.com/download/web/giab/data_somatic/HG008/Liss_lab/BCM_Illumina-WGS_20240313/HG008-N-D_Illumina_169x_GRCh38-GIABv3.bam
+* https://42basepairs.com/download/web/giab/data_somatic/HG008/Liss_lab/BCM_Illumina-WGS_20240313/HG008-T_Illumina_195x_GRCh38-GIABv3.bam
+* https://42basepairs.com/download/web/giab/data_somatic/HG008/Liss_lab/analysis/Hartwig_Oncoanalyzer_BCM-ILMN_20260204/pave/HG008-T.sage.somatic.pave.vcf.gz
 
 For consistency with out current study utilising whole-exome sequencing from TCGA, the above BAMs were filtered down to a set of targeted regions, focusing on chromosome 17, and subsampled to 50% coverage to reduce filesize. Finally, reads from these chr17-subsetted-and-subsampled BAM files were extracted back to FASTQ format.
 
 <pre><code># example commands
-samtools view -b -P -L [chr17_targeted_regions.bed.gz][bed] --subsample 0.5 HG008-T_Illumina_195x_GRCh38-GIABv3.bam | samtools collate -O - | samtools fastq -1 HG008T_R1.fastq.gz -2 HG008T_R2.fastq.gz -0 /dev/null -s /dev/null -n
+samtools view -b -P -L [chr17_targeted_regions.bed.gz][bed] --subsample 0.5 HG008-T_Illumina_195x_GRCh38-GIABv3.bam \
+    | samtools collate -O - \
+    | samtools fastq -1 HG008T_R1.fastq.gz -2 HG008T_R2.fastq.gz -0 /dev/null -s /dev/null -n
 
-samtools view -b -P -L [chr17_targeted_regions.bed.gz][bed] --subsample 0.5 HG008-N-D_Illumina_169x_GRCh38-GIABv3.bam | samtools collate -O - | samtools fastq -1 HG008N_R1.fastq.gz -2 HG008N_R2.fastq.gz -0 /dev/null -s /dev/null -n
+samtools view -b -P -L [chr17_targeted_regions.bed.gz][bed] --subsample 0.5 HG008-N-D_Illumina_169x_GRCh38-GIABv3.bam \
+    | samtools collate -O - \
+    | samtools fastq -1 HG008N_R1.fastq.gz -2 HG008N_R2.fastq.gz -0 /dev/null -s /dev/null -n
 </code></pre>
 
 
 ## Reference Files
 Download your desired pangenome reference [here](https://data.humanpangenome.org/alignments), including the .gbz, .dist and .min files.
-    * https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus/hprc-v1.1-mc-grch38/hprc-v1.1-mc-grch38.d9.dist
-    * https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus/hprc-v1.1-mc-grch38/hprc-v1.1-mc-grch38.d9.gbz
-    * https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus/hprc-v1.1-mc-grch38/hprc-v1.1-mc-grch38.d9.min
+
+* https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus/hprc-v1.1-mc-grch38/hprc-v1.1-mc-grch38.d9.dist
+* https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus/hprc-v1.1-mc-grch38/hprc-v1.1-mc-grch38.d9.gbz
+* https://s3-us-west-2.amazonaws.com/human-pangenomics/pangenomes/freeze/freeze1/minigraph-cactus/hprc-v1.1-mc-grch38/hprc-v1.1-mc-grch38.d9.min
 
 Extract the linear-reference genome as included in the above pangenome:
 <pre><code># note that this will result in non-traditional contig ordering
@@ -51,12 +57,21 @@ To run the pangenome-somaticSNV pipeline using the above input files:
 
 <pre><code>cd /path/to/git/pangenome-pipeline
 
-# test run the pipeline; this will generate the output directory structure and scripts that will be submitted to slurm
+# test run the pipeline; this will generate the output directory structure and \
+#     scripts that will be submitted to slurm
 # check that all of these seem reasonable before submitting the next command
-python scripts/run_pangenome_somatic_pipeline.py -t /path/to/your/tool_config.yaml -d /path/to/your/data_config.yaml -o /path/to/output --alignment --mutect2 --strelka -m slurm --remove --dry_run
+python scripts/run_pangenome_somatic_pipeline.py \
+    -t /path/to/your/tool_config.yaml \
+    -d /path/to/your/data_config.yaml \
+    -o /path/to/output \
+    --alignment --mutect2 --strelka -m slurm --remove --dry_run
 
 # now, submit the jobs to slurm!
-python scripts/run_pangenome_somatic_pipeline.py -t /path/to/your/tool_config.yaml -d /path/to/your/data_config.yaml -o /path/to/output --alignment --mutect2 --strelka -m slurm --remove
+python scripts/run_pangenome_somatic_pipeline.py \
+    -t /path/to/your/tool_config.yaml \
+    -d /path/to/your/data_config.yaml \
+    -o /path/to/output \
+    --alignment --mutect2 --strelka -m slurm --remove
 </code></pre>
 
 The expected runtimes and memory usage can be found in [expected_runtimes.txt][expected_resources].
