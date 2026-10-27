@@ -1,3 +1,4 @@
+### STAGE 1 ###
 FROM ubuntu:16.04 AS builder
 
 RUN apt-get -yq update \
@@ -20,20 +21,13 @@ RUN apt-get -yq update \
     autoconf automake perl libbz2-dev liblzma-dev libcurl4-gnutls-dev libssl-dev libncurses5-dev \
     && rm -rf /var/lib/apt/lists/*
 
-RUN locale-gen en_US.UTF-8
-RUN update-locale LANG=en_US.UTF-8
-
 ENV OPT=/opt/tools
-ENV PERL5LIB=$OPT/lib/perl5
-ENV LD_LIBRARY_PATH=$OPT/lib
-ENV LC_ALL=en_US.UTF-8
-ENV LANG=en_US.UTF-8
 
 # download and install htslib
 ENV SAMTOOLS_VERSION="1.23.1"
 
 WORKDIR /tmp
-RUN wget --progress=dot:giga https://github.com/samtools/htslib/releases/download/${SAMTOOLS_VERSION}/htslib-${SAMTOOLS_VERSION}.tar.bz2 \
+RUN wget https://github.com/samtools/htslib/releases/download/${SAMTOOLS_VERSION}/htslib-${SAMTOOLS_VERSION}.tar.bz2 \
     && tar -jxf htslib-${SAMTOOLS_VERSION}.tar.bz2 \
     && cd /tmp/htslib-${SAMTOOLS_VERSION}/ \
     && ./configure --without-libdeflate --prefix=$OPT/htslib \
@@ -42,7 +36,7 @@ RUN wget --progress=dot:giga https://github.com/samtools/htslib/releases/downloa
 
 # download and install samtools
 WORKDIR /tmp
-RUN wget --progress=dot:giga https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2 \
+RUN wget https://github.com/samtools/samtools/releases/download/${SAMTOOLS_VERSION}/samtools-${SAMTOOLS_VERSION}.tar.bz2 \
     && tar -jxf samtools-${SAMTOOLS_VERSION}.tar.bz2 \
     && cd /tmp/samtools-${SAMTOOLS_VERSION} \
     && ./configure --without-libdeflate --prefix=$OPT/samtools \
@@ -51,7 +45,7 @@ RUN wget --progress=dot:giga https://github.com/samtools/samtools/releases/downl
 
 # download and install bcftools
 WORKDIR /tmp
-RUN wget --progress=dot:giga https://github.com/samtools/bcftools/releases/download/${SAMTOOLS_VERSION}/bcftools-${SAMTOOLS_VERSION}.tar.bz2 \
+RUN wget https://github.com/samtools/bcftools/releases/download/${SAMTOOLS_VERSION}/bcftools-${SAMTOOLS_VERSION}.tar.bz2 \
     && tar -jxf bcftools-${SAMTOOLS_VERSION}.tar.bz2 \
     && cd /tmp/bcftools-${SAMTOOLS_VERSION} \
     && ./configure --without-libdeflate --prefix=$OPT/bcftools \
@@ -68,7 +62,7 @@ RUN rm -rf htslib-${SAMTOOLS_VERSION}* \
 ENV STRELKA_VERSION="2.9.10"
 
 WORKDIR /tmp
-RUN wget --progress=dot:giga https://github.com/Illumina/strelka/releases/download/v${STRELKA_VERSION}/strelka-${STRELKA_VERSION}.centos6_x86_64.tar.bz2 \
+RUN wget https://github.com/Illumina/strelka/releases/download/v${STRELKA_VERSION}/strelka-${STRELKA_VERSION}.centos6_x86_64.tar.bz2 \
     && tar -jxf strelka-${STRELKA_VERSION}.centos6_x86_64.tar.bz2 \
     && mkdir $OPT/strelka \
     && cp -r strelka-${STRELKA_VERSION}.centos6_x86_64/* $OPT/strelka \
@@ -78,7 +72,7 @@ RUN wget --progress=dot:giga https://github.com/Illumina/strelka/releases/downlo
 ENV GATK_VERSION="4.3.0.0"
 
 WORKDIR /tmp
-RUN wget --progress=dot:giga https://github.com/broadinstitute/gatk/releases/download/${GATK_VERSION}/gatk-${GATK_VERSION}.zip \
+RUN wget https://github.com/broadinstitute/gatk/releases/download/${GATK_VERSION}/gatk-${GATK_VERSION}.zip \
     && unzip gatk-${GATK_VERSION}.zip \
     && mkdir -p $OPT/gatk \
     && cp gatk-${GATK_VERSION}/gatk-package-4.3.0.0-local.jar $OPT/gatk/ \
@@ -89,14 +83,15 @@ RUN wget --progress=dot:giga https://github.com/broadinstitute/gatk/releases/dow
 ENV VG_VERSION="1.61.0"
 
 WORKDIR $OPT/
-RUN wget --progress=dot:giga https://github.com/vgteam/vg/releases/download/v${VG_VERSION}/vg && \
+RUN wget https://github.com/vgteam/vg/releases/download/v${VG_VERSION}/vg && \
     chmod +x vg
 
+### STAGE 2 ###
 FROM ubuntu:16.04
 
 LABEL maintainer="prokos2@mcmaster.ca" \
       version="1.0.0" \
-      description="Pangenome:Somatic pipeline"
+      description="Pangenome:SomaticSNV pipeline"
 
 RUN apt-get -yq update \
     && apt-get install -yq --no-install-recommends \
@@ -112,14 +107,7 @@ RUN apt-get -yq update \
     apt-get remove -yq unattended-upgrades && \
     apt-get autoremove -yq
 
-RUN locale-gen en_US.UTF-8
-RUN update-locale LANG=en_US.UTF-8
-
 ENV OPT=/opt/tools
-ENV PERL5LIB=$OPT/lib/perl5
-ENV LD_LIBRARY_PATH=$OPT/lib
-ENV LC_ALL=en_US.UTF-8
-ENV LANG=en_US.UTF-8
 
 RUN mkdir -p $OPT
 COPY --from=builder $OPT $OPT
@@ -130,12 +118,11 @@ ENV PATH=$OPT/strelka/bin:$PATH
 ENV PATH=$OPT/gatk:$PATH
 ENV PATH=$OPT:$PATH
 
-## USER CONFIGURATION
-RUN adduser --disabled-password --gecos '' ubuntu && chsh -s /bin/bash && mkdir -p /home/ubuntu
+## TEST DATA
+RUN mkdir -p /opt/data
+COPY data /opt/data
 
-USER    ubuntu
-WORKDIR /home/ubuntu
-
+## CONFIGURATION 
 CMD ["/bin/bash"]
 
 # test to verify tool binaries work
@@ -144,5 +131,5 @@ RUN configureStrelkaSomaticWorkflow.py --version && \
     bcftools --version && \
     gatk --version
 
-#    vg version
+RUN vg version | head -n 1
 

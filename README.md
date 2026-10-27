@@ -27,7 +27,7 @@ Required tools/packages:
     * R packages: argparse
 
 * VG, samtools, bcftools, bgzip, tabix, GATK (>= v4), Strelka, SomaticSniper (with bam-readcount), DeepSomatic
-    * note that all of these are conventiently packaged using docker [here](/path/to/some/repo)
+    * note that all of these are conventiently packaged using docker [here](https://hub.docker.com/repository/docker/houlahanlab/pangenome-somaticsnv-pipeline)
 
 Recommended/optional:
 * apptainer

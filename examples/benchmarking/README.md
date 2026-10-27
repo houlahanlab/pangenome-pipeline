@@ -1,7 +1,7 @@
 # Pangenome-somaticSNV-pipeline
 
 ## Benchmarking Data
-HG008 is a matched tumour-normal dataset developed by the Genome in a Bottle Consortium[1][1]: HG008-T is a pancreatic ductal adenocarcinoma cell line, while HG008-N-D is matched normal duodenal tissue. Both samples have been sequenced using multiple technologies and platforms, making it ideal for use in benchmarking studies.
+HG008 is a matched tumour-normal dataset developed by the [Genome in a Bottle Consortium](https://doi.org/10.1038/s41597-025-05438-2): HG008-T is a pancreatic ductal adenocarcinoma cell line, while HG008-N-D is matched normal duodenal tissue. Both samples have been sequenced using multiple technologies and platforms, making it ideal for use in benchmarking studies.
 
 Sequencing data for HG008-T and HG008-N-D were downloaded from GIAB (WGS, in BAM format), along with a set of high-confidence somatic SNVs:
 
@@ -49,7 +49,7 @@ Download the required germline-resource files:
 To run the pangenome-somaticSNV pipeline using the above input files:
 1. Fill in the paths to your FASTQ files in the provided [data_config.yaml][data_config]
 2. Fill in the paths to your reference files in the provided [tool_config.yaml][tool_config]
-3. Download the prepacked docker/apptainer image [here][docker]
+3. Download the prepacked docker/apptainer image [here](https://hub.docker.com/repository/docker/houlahanlab/pangenome-somaticsnv-pipeline)
     * then fill in the container path/call command in [tool_config.yaml][tool_config]
 4. Run the pipeline!
     * if running locally, replace 'slurm' with 'local' in the below command
@@ -82,10 +82,8 @@ A set of 'true positive' variants were identified from GIAB's high-confidence so
 These variants, along with the expected variant allele frequency (VAF) and the observed VAFs from our pipeline for Strelka2 and Mutect2 can be found in [expected_results.tsv][expected_results]
 
 
-[1]: doi.org/10.1038/s41597-025-05438-2
 [bed]: chr17_targeted_regions.bed.gz
 [data_config]: data_config.yaml
 [tool_config]: tool_config.yaml
-[docker]: /path/to/dockerhub
 [expected_resources]: expected_runtimes.txt
 [expected_results]: expected_results.tsv
